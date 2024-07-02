@@ -1,22 +1,36 @@
-﻿namespace user_service
+﻿using data_access.cosmos;
+using System.Text.Json.Serialization;
+
+namespace user_service
 {
+    // TO-DO: Exception handling lol, this gonna break soon
     public class UserService
     {
-        public User[] Get() => new User[]
+        private readonly CosmosDbService<User> _dbSvc;
+        public UserService(CosmosDbService<User> dbSvc)
         {
-            new(){ Id="1", Name="Shana", Email="shana@bana.com"},
-            new(){ Id="2", Name="Bal", Email="bal@bana.com"},
-            new(){ Id="3", Name="Goru", Email="goru@bana.com"},
-            new(){ Id="4", Name="Choom", Email="choom@bana.com"},
-        };
+            _dbSvc = dbSvc;
+        }
 
-        public User GetById(string id) => Get().SingleOrDefault(u => u.Id == id);
+        public async Task<User[]> Get() => _dbSvc.GetAllAsync().Result;
+        
+        public async Task<User> GetById(string id, string organisationId) => await _dbSvc.GetAsync(id, organisationId);
+
+        public async Task Create(User user) => await _dbSvc.CreateAsync(user);
     }
 
-    public class User
+    public record User : ICosmosEntity
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+
+        public string OrganisationId { get; set; }
         public string Name { get; set; }
         public string Email { get; set; }
+
+        [JsonPropertyName("CosmosEntityName")]
+        public string CosmosEntityName { get; init; } = "User";
+
+        public string PartitionKey => OrganisationId;
     }
 }

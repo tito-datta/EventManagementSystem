@@ -1,3 +1,4 @@
+using data_access.cosmos;
 using Microsoft.OpenApi.Models;
 using user_service;
 
@@ -12,7 +13,11 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register services
 var userdb = builder.Configuration.GetSection("UserDb");
-builder.Services.AddScoped<UserService>();
+// Register Db
+builder.Services.AddSingleton(new CosmosDbService<User>(userdb.GetSection("ConnectionString").Value,
+                                                        userdb.GetSection("DatabaseName").Value,
+                                                        userdb.GetSection("ContainerName").Value));
+builder.Services.AddScoped(s => new UserService(s.GetRequiredService<CosmosDbService<User>>()));
 
 var app = builder.Build();
 
@@ -25,32 +30,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/users", (UserService svc) => svc.Get()).WithName("GetAllUsers").WithOpenApi();
-app.MapGet("/user/{id}", (string id, UserService svc) => svc.GetById(id)).WithName("GetUserById").WithOpenApi();
-
-//var summaries = new[]
-//{
-//    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-//};
-
-//app.MapGet("/weatherforecast", () =>
-//{
-//    var forecast = Enumerable.Range(1, 5).Select(index =>
-//        new WeatherForecast
-//        (
-//            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-//            Random.Shared.Next(-20, 55),
-//            summaries[Random.Shared.Next(summaries.Length)]
-//        ))
-//        .ToArray();
-//    return forecast;
-//})
-//.WithName("GetWeatherForecast")
-//.WithOpenApi(); // Add this line for .NET 8 minimal APIs
+app.MapGet("/users", async (UserService svc) => svc.Get()).WithName("GetAllUsers").WithOpenApi();
+app.MapGet("/user/{id}/{organisationId}", async (string id, string organisationId, UserService svc) => svc.GetById(id, organisationId)).WithName("GetUserById").WithOpenApi();
+app.MapPost("/user", async (User user, UserService svc) =>
+{
+    try
+    {
+        var result = svc.Create(user);
+        return Results.Created();
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem();
+    }
+}).WithName("CreateUser").WithOpenApi();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
