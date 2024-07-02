@@ -1,5 +1,5 @@
 using Microsoft.OpenApi.Models;
-using user_access;
+using user_service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +12,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register services
 var userdb = builder.Configuration.GetSection("UserDb");
-builder.Services.AddSingleton(UserDbAccess.Instance(userdb?.GetSection("ConnectionString").Value,
-                                                    userdb?.GetSection("DatabaseName").Value,
-                                                    userdb?.GetSection("ContainerName").Value));
+builder.Services.AddScoped<UserService>();
 
 var app = builder.Build();
 
@@ -26,6 +24,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapGet("/users", (UserService svc) => svc.Get()).WithName("GetAllUsers").WithOpenApi();
+app.MapGet("/user/{id}", (string id, UserService svc) => svc.GetById(id)).WithName("GetUserById").WithOpenApi();
 
 //var summaries = new[]
 //{
