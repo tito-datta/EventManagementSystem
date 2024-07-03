@@ -2,13 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>user_service</RootNamespace>
+    <RootNamespace>data_access</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\access-layer\data-access\data-access.csproj" />
+    <PackageReference Include="Azure.Identity" Version="1.12.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.41.0" />
   </ItemGroup>
 
 </Project>
