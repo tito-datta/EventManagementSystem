@@ -30,7 +30,7 @@ namespace data_access.cosmos
         {
             if (item is null) throw new ArgumentNullException(nameof(item));
 
-            var response = await _container.DeleteItemAsync<T>(item.Id, new(item.PartitionKey));
+            var response = await _container.DeleteItemAsync<T>(item.id, new(item.PartitionKey));
             if (response is null || response.StatusCode is not System.Net.HttpStatusCode.NoContent)
             {
                 throw new Exception(string.Format("Failed to delete object {0} from database due to {1}.", item.GetType().Name, response?.StatusCode));

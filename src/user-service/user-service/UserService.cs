@@ -1,4 +1,5 @@
-﻿using data_access.cosmos;
+﻿using data_access;
+using data_access.cosmos;
 using System.Text.Json.Serialization;
 
 namespace user_service
@@ -12,25 +13,87 @@ namespace user_service
             _dbSvc = dbSvc;
         }
 
-        public async Task<User[]> Get() => _dbSvc.GetAllAsync().Result;
-        
-        public async Task<User> GetById(string id, string organisationId) => await _dbSvc.GetAsync(id, organisationId);
+        public async Task<Result> GetAsync()
+        {
+            try
+            {
+                var result = await _dbSvc.GetAllAsync();
+                return new() { Content = result };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
 
-        public async Task Create(User user) => await _dbSvc.CreateAsync(user);
+        public async Task<Result> GetByIdAsync(string id, string organisationId) 
+        {
+            if(organisationId is null) throw new ArgumentNullException(nameof(organisationId));
+            if(id is null) throw new ArgumentNullException(nameof(id));
+
+            try
+            {
+                var result = await _dbSvc.GetAsync(id, organisationId);
+                return new() { Content = result };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> CreateAsync(User user)
+        {
+            if (user is null) throw new ArgumentNullException(nameof(user));
+
+            try
+            {
+                await _dbSvc.CreateAsync(user);
+                return new() { Content = "Successfully saved." };
+            }
+            catch (Exception ex)
+            {
+                // gotta figure out what to do here
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> DeleteUserAsync(string id, string orgId)
+        {
+            if (id is null) throw new ArgumentNullException(nameof(id));
+
+            try
+            {
+                var toDelete = await _dbSvc.GetAsync(id, orgId);
+
+                if (toDelete is not null)
+                {
+                    await _dbSvc.DeleteAsync(toDelete);
+                    return new() { Content = "Successfully deleted." };
+                }
+                return new() { Error = $"Object with id {id} was not found under organisation {orgId}" };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> UpdateAsync(User item)
+        {
+            if (item is null) throw new ArgumentNullException(nameof(item));
+
+            try
+            {
+                await _dbSvc.UpdateAsync(item);
+                return new() { Content = $"Successfully updated item with id: {item.id} under organisation: {item.OrganisationId}." };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+
+        }
     }
+}    
 
-    public record User : ICosmosEntity
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; }
-
-        public string OrganisationId { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-
-        [JsonPropertyName("CosmosEntityName")]
-        public string CosmosEntityName { get; init; } = "User";
-
-        public string PartitionKey => OrganisationId;
-    }
-}

@@ -5,6 +5,6 @@
         string CosmosEntityName { get; }
         // partiotion decesion is creeping into code but too lazy to refactor
         string PartitionKey { get; }
-        string Id { get; }
+        string id { get; }
     }
 }
