@@ -1,6 +1,7 @@
 using data_access.cosmos;
 using Microsoft.Azure.Cosmos;
 using Microsoft.OpenApi.Models;
+using user_api;
 using user_service;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,66 +32,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-#region User APIs
-app.MapGet("/users", async (UserService svc) =>
-{
-    var result = await svc.GetAsync();
-
-    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
-    {
-        return Results.Problem(result.Error);
-    }
-
-    return Results.Ok(result.Content as user_service.User[]);
-}).WithName("GetAllUsers").WithOpenApi();
-
-app.MapGet("/user/{id}/{organisationId}", async (string id, string organisationId, UserService svc) =>
-{
-    var result = await svc.GetByIdAsync(id, organisationId);
-
-    if(result.Error is not null && result.Content.GetType() == typeof(CosmosException))
-    {
-        return Results.Problem(result.Error);
-    }
-
-    return Results.Ok(result.Content as user_service.User);
-}).WithName("GetUserById").WithOpenApi();
-
-app.MapPost("/user", async (user_service.User user, UserService svc) =>
-{
-    var result = await svc.CreateAsync(user);
-
-    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
-    {
-        return Results.Problem(result.Error);
-    }
-
-    return Results.Created();
-}).WithName("CreateUser").WithOpenApi();
-
-app.MapPut("/user", async (user_service.User user, UserService svc) =>
-{
-    var result = await svc.UpdateAsync(user);
-
-    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
-    {
-        return Results.Problem(result.Error);
-    }
-
-    return Results.Accepted();
-});
-
-app.MapDelete("/user", async (string id, string orgId, UserService svc) =>
-{
-    var result = await svc.DeleteUserAsync(id, orgId);
-
-    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
-    {
-        return Results.Problem(result.Error);
-    }
-
-    return Results.NotFound();
-});
-#endregion
+app.MapUserEndpoints();
 
 app.Run();

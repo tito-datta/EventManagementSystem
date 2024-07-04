@@ -3,11 +3,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine as publish
 
 WORKDIR /app
 
-# Copy all files from current directory to /app directory in the image
-COPY ./ .
+# Copy the data access layer
+COPY src/access-layer/data-access/ ./access-layer/data-access/
+
+# Copy the user service
+COPY src/user-service/ ./user-service/
 
 # Perform necessary operations like restoring packages and building the project
-RUN dotnet publish ./user-api/user-api.csproj \
+RUN dotnet publish ./user-service/user-api/user-api.csproj \
         --self-contained true \
         --runtime linux-musl-x64 \
         --configuration Release \
