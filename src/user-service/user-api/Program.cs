@@ -1,3 +1,5 @@
+using data_access.cosmos;
+using Microsoft.Azure.Cosmos;
 using Microsoft.OpenApi.Models;
 using user_service;
 
@@ -12,7 +14,11 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register services
 var userdb = builder.Configuration.GetSection("UserDb");
-builder.Services.AddScoped<UserService>();
+// Register Db
+builder.Services.AddSingleton(new CosmosDbService<user_service.User>(userdb.GetSection("ConnectionString").Value!,
+                                                                     userdb.GetSection("DatabaseName").Value!,
+                                                                     userdb.GetSection("ContainerName").Value!));
+builder.Services.AddScoped(s => new UserService(s.GetRequiredService<CosmosDbService<user_service.User>>()));
 
 var app = builder.Build();
 
@@ -25,32 +31,66 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/users", (UserService svc) => svc.Get()).WithName("GetAllUsers").WithOpenApi();
-app.MapGet("/user/{id}", (string id, UserService svc) => svc.GetById(id)).WithName("GetUserById").WithOpenApi();
+#region User APIs
+app.MapGet("/users", async (UserService svc) =>
+{
+    var result = await svc.GetAsync();
 
-//var summaries = new[]
-//{
-//    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-//};
+    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+    {
+        return Results.Problem(result.Error);
+    }
 
-//app.MapGet("/weatherforecast", () =>
-//{
-//    var forecast = Enumerable.Range(1, 5).Select(index =>
-//        new WeatherForecast
-//        (
-//            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-//            Random.Shared.Next(-20, 55),
-//            summaries[Random.Shared.Next(summaries.Length)]
-//        ))
-//        .ToArray();
-//    return forecast;
-//})
-//.WithName("GetWeatherForecast")
-//.WithOpenApi(); // Add this line for .NET 8 minimal APIs
+    return Results.Ok(result.Content as user_service.User[]);
+}).WithName("GetAllUsers").WithOpenApi();
+
+app.MapGet("/user/{id}/{organisationId}", async (string id, string organisationId, UserService svc) =>
+{
+    var result = await svc.GetByIdAsync(id, organisationId);
+
+    if(result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+    {
+        return Results.Problem(result.Error);
+    }
+
+    return Results.Ok(result.Content as user_service.User);
+}).WithName("GetUserById").WithOpenApi();
+
+app.MapPost("/user", async (user_service.User user, UserService svc) =>
+{
+    var result = await svc.CreateAsync(user);
+
+    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+    {
+        return Results.Problem(result.Error);
+    }
+
+    return Results.Created();
+}).WithName("CreateUser").WithOpenApi();
+
+app.MapPut("/user", async (user_service.User user, UserService svc) =>
+{
+    var result = await svc.UpdateAsync(user);
+
+    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+    {
+        return Results.Problem(result.Error);
+    }
+
+    return Results.Accepted();
+});
+
+app.MapDelete("/user", async (string id, string orgId, UserService svc) =>
+{
+    var result = await svc.DeleteUserAsync(id, orgId);
+
+    if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+    {
+        return Results.Problem(result.Error);
+    }
+
+    return Results.NotFound();
+});
+#endregion
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
