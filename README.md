@@ -52,6 +52,7 @@ For Docker:
 
 For Podman:
 `podman save localhost/user-service:latest -o user-service.tar`
+
 `kind load image-archive user-service.tar --name my-app-dev`
 
 ## Kubernetes Deployment
