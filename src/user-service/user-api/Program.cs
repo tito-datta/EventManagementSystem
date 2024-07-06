@@ -1,4 +1,5 @@
 using data_access.cosmos;
+using data_access.redis;
 using Microsoft.Azure.Cosmos;
 using Microsoft.OpenApi.Models;
 using user_api;
@@ -16,10 +17,15 @@ builder.Services.AddSwaggerGen(c =>
 // Register services
 var userdb = builder.Configuration.GetSection("UserDb");
 // Register Db
-builder.Services.AddSingleton(new CosmosDbService<user_service.User>(userdb.GetSection("ConnectionString").Value!,
-                                                                     userdb.GetSection("DatabaseName").Value!,
-                                                                     userdb.GetSection("ContainerName").Value!));
-builder.Services.AddScoped(s => new UserService(s.GetRequiredService<CosmosDbService<user_service.User>>()));
+//builder.Services.AddSingleton(new CosmosDbService<user_service.User>(userdb.GetSection("ConnectionString").Value!,
+//                                                                     userdb.GetSection("DatabaseName").Value!,
+//                                                                     userdb.GetSection("ContainerName").Value!));
+builder.Services.AddSingleton(new RedisCacheService<user_service.User>(builder.Configuration.GetSection("Redis").Value!, "User-Service"));
+builder.Services.AddSingleton(s => new UserDataFakeGenerator(s.GetRequiredService<RedisCacheService<user_service.User>>()));
+builder.Services.AddScoped(s => new UserService(s.GetRequiredService<RedisCacheService<user_service.User>>()));
+
+// Register healthchecks
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -33,5 +39,25 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapUserEndpoints();
+
+app.MapPost("users-gen-fake-data", async (int count, UserDataFakeGenerator generator) =>
+{
+    if (count == 0)
+    {
+        return Results.BadRequest("Count has be at least 1.");
+    }
+
+    try
+    {
+        await generator.GenerateAndStoreTestData(count);
+        return Results.Created();
+    }
+    catch (Exception ex) 
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+app.MapHealthChecks("/health");
 
 app.Run();
