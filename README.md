@@ -44,23 +44,23 @@ Ensure you have the following installed:
 `docker build -t localhost/user-service:latest .`
 Or with Podman:
 `podman build -t localhost/user-service:latest .`
-Copy
+
 2. Load the image into Kind:
 For Docker:
 `kind load docker-image localhost/user-service:latest --name my-app-dev`
-CopyFor Podman:
+For Podman:
 `podman save localhost/user-service:latest -o user-service.tar`
 `kind load image-archive user-service.tar --name my-app-dev`
-Copy
+
 ## Kubernetes Deployment
 
 1. Apply the Kubernetes manifests:
 `kubectl apply -f dev.yaml`
-Copy
+
 2. Verify the deployment:
 `kubectl get pods`
 `kubectl get services`
-Copy
+
 ## Accessing the Application
 
 1. Set up port forwarding:
