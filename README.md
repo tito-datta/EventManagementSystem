@@ -46,6 +46,7 @@ Or with Podman:
 `podman build -t localhost/user-service:latest .`
 
 2. Load the image into Kind:
+
 For Docker:
 `kind load docker-image localhost/user-service:latest --name my-app-dev`
 
