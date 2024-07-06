@@ -48,6 +48,7 @@ Or with Podman:
 2. Load the image into Kind:
 For Docker:
 `kind load docker-image localhost/user-service:latest --name my-app-dev`
+
 For Podman:
 `podman save localhost/user-service:latest -o user-service.tar`
 `kind load image-archive user-service.tar --name my-app-dev`
