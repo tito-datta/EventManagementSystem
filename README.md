@@ -17,8 +17,6 @@ This project demonstrates a .NET User Service application with a Redis sidecar, 
 5. [Kubernetes Deployment](#kubernetes-deployment)
 6. [Accessing the Application](#accessing-the-application)
 7. [Troubleshooting](#troubleshooting)
-8. [Contributing](#contributing)
-9. [License](#license)
 
 ## Prerequisites
 
