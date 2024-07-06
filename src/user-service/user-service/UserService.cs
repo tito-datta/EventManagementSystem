@@ -1,5 +1,6 @@
 ﻿using data_access;
 using data_access.cosmos;
+using data_access.redis;
 using System.Text.Json.Serialization;
 
 namespace user_service
@@ -7,8 +8,14 @@ namespace user_service
     // TO-DO: Exception handling lol, this gonna break soon
     public class UserService
     {
-        private readonly CosmosDbService<User> _dbSvc;
-        public UserService(CosmosDbService<User> dbSvc)
+        //private readonly CosmosDbService<User> _dbSvc;        
+        //public UserService(CosmosDbService<User> dbSvc)
+        //{
+        //    _dbSvc = dbSvc;
+        //}
+
+        private readonly RedisCacheService<User> _dbSvc;
+        public UserService(RedisCacheService<User> dbSvc)
         {
             _dbSvc = dbSvc;
         }
@@ -86,7 +93,7 @@ namespace user_service
             try
             {
                 await _dbSvc.UpdateAsync(item);
-                return new() { Content = $"Successfully updated item with id: {item.id} under organisation: {item.OrganisationId}." };
+                return new() { Content = $"Successfully updated item with id: {item.Id} under organisation: {item.OrganisationId}." };
             }
             catch (Exception ex)
             {

@@ -1,0 +1,119 @@
+---
+# PersistentVolume for Redis data
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-data
+spec:
+  capacity:
+    storage: 128Mi  # Allocate 100 MiB of storage
+  accessModes:
+    - ReadWriteOnce  # Can be mounted as read-write by a single node
+  persistentVolumeReclaimPolicy: Retain  # Keep the volume after claim is released
+  storageClassName: manual  # Used to bind this PV to a specific PVC
+  hostPath:
+    path: "/data/redis"  # Path on the host where data will be stored
+    type: DirectoryOrCreate
+
+---
+# PersistentVolumeClaim for Redis data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-claim
+spec:
+  storageClassName: manual  # Must match the PV's storageClassName
+  accessModes:
+    - ReadWriteOnce  # Matches the PV's access mode
+  resources:
+    requests:
+      storage: 128Mi  # Request 500 MiB of storage
+
+---
+# Deployment for the application with Redis sidecar
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-with-redis-sidecar
+  labels:
+    app: app-with-redis-sidecar
+spec:
+  replicas: 1  # Run two instances of this deployment
+  selector:
+    matchLabels:
+      app: app-with-redis-sidecar
+  template:
+    metadata:
+      labels:
+        app: app-with-redis-sidecar
+    spec:
+      containers:
+      # Main application container
+      - name: user-service
+        image: localhost/user-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080  # Expose port 8080
+        env:
+        - name: ENVIRONMENT
+          value: "development"
+        - name: DEBUG
+          value: "true"
+        - name: Redis
+          value: "localhost:6379"  # Connect to Redis on localhost
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        # livenessProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: 8080
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   httpGet:
+        #     path: /ready
+        #     port: 8080
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+
+      # Redis sidecar container
+      - name: redis-sidecar
+        image: docker.io/redis/redis-stack:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379  # Expose Redis port
+        volumeMounts:
+        - name: redis-db
+          mountPath: /data  # Mount persistent storage for Redis data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+      # Volumes for the pod
+      volumes:
+      - name: redis-db
+        persistentVolumeClaim:
+          claimName: redis-data-claim  
+
+---
+# Service to expose the user-service
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  type: ClusterIP  # Internal service, not exposed outside the cluster
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: app-with-redis-sidecar  # Select pods with this label

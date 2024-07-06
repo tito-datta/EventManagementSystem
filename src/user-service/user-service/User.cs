@@ -1,30 +1,14 @@
 ﻿using data_access.cosmos;
+using data_access.redis;
 
 namespace user_service
 {
-    public record User : ICosmosEntity
+    public record User : 
+        //ICosmosEntity,
+        IRedisEntity
     {
-        //private string ID;
-
-        public string id { get; set; } = Guid.NewGuid().ToString();
-        //public string id 
-        //{
-        //    get
-        //    {
-        //        return ID;
-        //    }
-        //    set
-        //    {
-        //        if (value is null)
-        //        {
-        //            ID = Guid.NewGuid().ToString();
-        //        }
-        //        else
-        //        {
-        //            ID = value;
-        //        }
-        //    }
-        //}
+        //public string id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public string OrganisationId { get; set; }
 
