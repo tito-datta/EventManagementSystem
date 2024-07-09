@@ -4,7 +4,7 @@
 
 This project demonstrates a .NET User Service application with a Redis sidecar, designed for deployment on Kubernetes. It showcases:
 
-- A .NET Web API for user management
+- A .NET Web API for user & membership management
 - Redis integration for caching and data persistence
 - Kubernetes deployment with a sidecar container pattern
 - Local development and testing using Kind (Kubernetes in Docker)
