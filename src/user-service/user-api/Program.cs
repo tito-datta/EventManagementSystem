@@ -1,5 +1,6 @@
 using data_access.cosmos;
 using data_access.redis;
+using data_access.redis.database;
 using Microsoft.Azure.Cosmos;
 using Microsoft.OpenApi.Models;
 using user_api;
@@ -20,9 +21,9 @@ var userdb = builder.Configuration.GetSection("UserDb");
 //builder.Services.AddSingleton(new CosmosDbService<user_service.User>(userdb.GetSection("ConnectionString").Value!,
 //                                                                     userdb.GetSection("DatabaseName").Value!,
 //                                                                     userdb.GetSection("ContainerName").Value!));
-builder.Services.AddSingleton(new RedisCacheService<user_service.User>(builder.Configuration.GetSection("Redis").Value!, "User-Service"));
-builder.Services.AddSingleton(s => new UserDataFakeGenerator(s.GetRequiredService<RedisCacheService<user_service.User>>()));
-builder.Services.AddScoped(s => new UserService(s.GetRequiredService<RedisCacheService<user_service.User>>()));
+builder.Services.AddSingleton(new RedisDbService<user_service.User>(builder.Configuration.GetSection("Redis").Value!, "User-Service"));
+builder.Services.AddSingleton(s => new UserDataFakeGenerator(s.GetRequiredService<RedisDbService<user_service.User>>()));
+builder.Services.AddScoped(s => new UserService(s.GetRequiredService<RedisDbService<user_service.User>>()));
 
 // Register healthchecks
 builder.Services.AddHealthChecks();

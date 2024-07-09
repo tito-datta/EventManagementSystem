@@ -4,7 +4,7 @@
 
 This project demonstrates a .NET User Service application with a Redis sidecar, designed for deployment on Kubernetes. It showcases:
 
-- A .NET Web API for user management
+- A .NET Web API for user & membership management
 - Redis integration for caching and data persistence
 - Kubernetes deployment with a sidecar container pattern
 - Local development and testing using Kind (Kubernetes in Docker)
@@ -32,55 +32,71 @@ Ensure you have the following installed:
 
 1. Clone the repository:git clone https://github.com/tito-datta/EventManagementSystem.git 
 
-2. `cd EventManagementSystem`
+2. Set up the cluster
 
-3. Set up the Kind cluster:
+Kind:
 
-4. `kind create cluster --name my-app-dev --config dev-cluster.yaml`
+    kind create cluster --name <cluster-name> --config dev-cluster.yaml
 
 ## Building the Application
 
-1. Build the Docker image:
-`docker build -t localhost/user-service:latest .`
-Or with Podman:
-`podman build -t localhost/user-service:latest .`
+1. Build the image
+
+Docker:
+
+    docker build -f /path/to/dockerfile -t <image-name:tag> .
+
+Podman:
+
+    podman build -f /path/to/dockerfile -t <image-name:tag> .
 
 2. Load the image into Kind:
 
-For Docker:
-`kind load docker-image localhost/user-service:latest --name my-app-dev`
+Docker:
 
-For Podman:
-`podman save localhost/user-service:latest -o user-service.tar`
+    kind load docker-image <image-name:tag> --name <cluster-name>
 
-`kind load image-archive user-service.tar --name my-app-dev`
+Podman:
+
+    podman save <image-name:tag> -o <file-name>.tar
+
+    kind load image-archive <file-name>.tar --name <cluster-name>
 
 ## Kubernetes Deployment
 
-1. Apply the Kubernetes manifests:
-`kubectl apply -f dev.yaml`
+Apply the Kubernetes manifests:
 
-2. Verify the deployment:
-`kubectl get pods`
-`kubectl get services`
+    kubectl apply -f dev.yaml
+
+Verify the deployment:
+
+    kubectl get pods
+
+    kubectl get services
 
 ## Accessing the Application
 
-1. Set up port forwarding:
-`kubectl port-forward service/user-service 8080:8080`
+Set up port forwarding:
 
-2. The application is now accessible at `http://localhost:8080`
+    kubectl port-forward service/user-service 8080:8080 8090:8090 8001:8001
+
+The application is now accessible at the above ports. 
+
+note: port 8001 hosts the Redis persistent db service 
 
 ## Troubleshooting
 
 If you encounter issues:
 
-1. Check pod status:
-`kubectl describe pod <pod-name>`
+Check pod status:
 
-2. View logs:
-`kubectl logs <pod-name> -c user-service`
-`kubectl logs <pod-name> -c redis-sidecar`
+    kubectl describe pod <pod-name>
 
-3. Verify images in Kind:
-`podman exec -it my-app-dev-control-plane crictl images`
+View logs:
+
+    kubectl logs <pod-name> -c <container-name>
+
+Verify images in Kind:
+    
+    podman exec -it <cluster-name>-control-plane crictl images
+

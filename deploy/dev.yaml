@@ -48,15 +48,15 @@ spec:
         app: app-with-redis-sidecar
     spec:
       containers:
-      # Main application container
+      # user service container
       - name: user-service
         image: localhost/user-service:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080  # Expose port 8080
         env:
-        - name: ENVIRONMENT
-          value: "development"
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
         - name: DEBUG
           value: "true"
         - name: Redis
@@ -68,18 +68,27 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-        # livenessProbe:
-        #   httpGet:
-        #     path: /healthz
-        #     port: 8080
-        #   initialDelaySeconds: 15
-        #   periodSeconds: 10
-        # readinessProbe:
-        #   httpGet:
-        #     path: /ready
-        #     port: 8080
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 5
+
+      # membership service container
+      - name: membership-service
+        image: localhost/membership-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8090
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: DEBUG
+          value: "true"
+        - name: Redis
+          value: "localhost:6379" 
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
 
       # Redis sidecar container
       - name: redis-sidecar
@@ -105,15 +114,22 @@ spec:
           claimName: redis-data-claim  
 
 ---
-# Service to expose the user-service
+# Service to expose the app services
 apiVersion: v1
 kind: Service
 metadata:
-  name: user-service
+  name: my-app-service
 spec:
   type: ClusterIP  # Internal service, not exposed outside the cluster
   ports:
   - port: 8080
     targetPort: 8080
+    name: user-service
+  - port: 8090
+    targetPort: 8090
+    name: membership-service
+  - port: 8001
+    targetPort: 8001
+    name: redis-sidecar
   selector:
     app: app-with-redis-sidecar  # Select pods with this label

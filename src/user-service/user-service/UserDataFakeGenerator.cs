@@ -1,19 +1,14 @@
 ﻿using Bogus;
-using data_access.redis;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using data_access.redis.database;
 
 namespace user_service
 {
     public class UserDataFakeGenerator
     {
         private readonly UserFaker _userFaker;
-        private readonly RedisCacheService<User> _redisCacheService;
+        private readonly RedisDbService<User> _redisCacheService;
 
-        public UserDataFakeGenerator(RedisCacheService<User> redisCacheService)
+        public UserDataFakeGenerator(RedisDbService<User> redisCacheService)
         {
             _userFaker = new UserFaker();
             _redisCacheService = redisCacheService;

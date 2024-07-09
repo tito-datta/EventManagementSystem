@@ -1,7 +1,5 @@
 ﻿using data_access;
-using data_access.cosmos;
-using data_access.redis;
-using System.Text.Json.Serialization;
+using data_access.redis.database;
 
 namespace user_service
 {
@@ -14,8 +12,8 @@ namespace user_service
         //    _dbSvc = dbSvc;
         //}
 
-        private readonly RedisCacheService<User> _dbSvc;
-        public UserService(RedisCacheService<User> dbSvc)
+        private readonly RedisDbService<User> _dbSvc;
+        public UserService(RedisDbService<User> dbSvc)
         {
             _dbSvc = dbSvc;
         }
