@@ -3,20 +3,19 @@ using NRedisStack;
 using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 
-namespace data_access.redis
+namespace data_access.redis.database
 {
-    public class RedisCacheService<T> : IDataAccess<T>, IDisposable where T : IRedisEntity, new()
+    public class RedisDbService<T> : IDataAccess<T>, IDisposable where T : IRedisEntity, new()
     {
         private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _db;
         private readonly string _prefix;
         private readonly JsonCommands _json;
 
-        public RedisCacheService(string connectionString, string prefix)
+        public RedisDbService(string connectionString, string prefix)
         {
             var options = ConfigurationOptions.Parse(connectionString);
             options.AbortOnConnectFail = false;
-            options.SyncTimeout = 10000; // 10 seconds
             options.AsyncTimeout = 10000; // 10 seconds
 
             _redis = ConnectionMultiplexer.Connect(options);
@@ -30,7 +29,12 @@ namespace data_access.redis
         public async Task<T> GetAsync(string id, string partKey)
         {
             var result = await _json.GetAsync(GetKey(id));
-            return result != null ? JsonSerializer.Deserialize<T>(result.ToString()) : default;
+            if(result != null && result.Length > 0)
+            {
+                return JsonSerializer.Deserialize<T>(result.ToString());
+            }
+
+            return default;
         }
 
         public async Task CreateAsync(T item)
@@ -64,10 +68,7 @@ namespace data_access.redis
             return results.ToArray();
         }
 
-        public async Task UpdateAsync(T item)
-        {
-            await CreateAsync(item);
-        }
+        public async Task UpdateAsync(T item) => await CreateAsync(item);
 
         public void Dispose()
         {
