@@ -9,6 +9,15 @@ nodes:
   - containerPort: 443
     hostPort: 443
     protocol: TCP
+  - containerPort: 5000
+    hostPort: 5000
+    listenAddress: "127.0.0.1"
+  - containerPort: 8080
+    hostPort: 8080
+  - containerPort: 8090
+    hostPort: 8090
+  - containerPort: 8001
+    hostPort: 8001
   extraMounts:
   - hostPath: E:\PodmanDrive
     containerPath: /data

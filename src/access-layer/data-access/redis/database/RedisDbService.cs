@@ -29,7 +29,7 @@ namespace data_access.redis.database
         public async Task<T> GetAsync(string id, string partKey)
         {
             var result = await _json.GetAsync(GetKey(id));
-            if(result != null && result.Length > 0)
+            if(result != null && result != default)
             {
                 return JsonSerializer.Deserialize<T>(result.ToString());
             }

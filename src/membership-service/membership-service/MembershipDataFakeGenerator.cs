@@ -34,7 +34,7 @@ namespace MebershipService
             RuleFor(m => m.Name, f => f.Name.FullName());
             RuleFor(m => m.Email, (f, m) => f.Internet.Email(m.Name));
             RuleFor(m => m.PhoneNumber, f => f.Phone.PhoneNumber());
-            RuleFor(m => m.Address, f => f.Address.ToString());
+            RuleFor(m => m.Address, f => f.Address.FullAddress());
             RuleFor(m => m.Dependents,
                     (f, m) => new MemberBaseFaker(m.Name.Split(" ")[1], m.Address).GenerateBetween<MemberBase>(1, 5).ToArray());
         }             

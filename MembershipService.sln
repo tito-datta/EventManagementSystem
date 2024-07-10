@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "data-access", "src\access-layer\data-access\data-access.csproj", "{686CDCB8-6915-4FCA-BA37-FD6F220DB9F8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "membership-service", "src\membership-service\MebershipService\membership-service.csproj", "{F1129916-3C81-4C8F-8D77-4D8D904AAB35}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "membership-service", "src\membership-service\membership-service\membership-service.csproj", "{F1129916-3C81-4C8F-8D77-4D8D904AAB35}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "membership-api", "src\membership-service\membership-api\membership-api.csproj", "{FC8AE657-A138-4455-ABCC-DB5689148EA0}"
 EndProject
