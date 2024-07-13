@@ -1,6 +1,5 @@
 ﻿using Bogus;
 using data_access.redis.database;
-using Microsoft.Azure.Cosmos;
 
 namespace MebershipService
 {
