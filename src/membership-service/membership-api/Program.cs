@@ -19,6 +19,9 @@ builder.Services.AddSingleton(new RedisDbService<Member>(builder.Configuration.G
 builder.Services.AddSingleton(s => new MembershipDataFakeGenerator(s.GetRequiredService<RedisDbService<Member>>()));
 builder.Services.AddScoped(s => new MembershipService(s.GetRequiredService<RedisDbService<Member>>()));
 
+// Register cache :D
+//builder.Services.AddSingleton<Redis>
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

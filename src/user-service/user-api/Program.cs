@@ -1,7 +1,4 @@
-using data_access.cosmos;
-using data_access.redis;
 using data_access.redis.database;
-using Microsoft.Azure.Cosmos;
 using Microsoft.OpenApi.Models;
 using user_api;
 using user_service;

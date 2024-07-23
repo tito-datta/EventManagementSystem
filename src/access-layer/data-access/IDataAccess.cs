@@ -2,7 +2,7 @@
 
 namespace data_access
 {
-    public interface IDataAccess<T> where T : IRedisEntity, new()
+    public interface IDataAccess<T> where T : IRedisEntity
     {
         Task<T> GetAsync(string id, string partKey);
         Task CreateAsync(T item);

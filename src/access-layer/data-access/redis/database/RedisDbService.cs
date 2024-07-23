@@ -5,7 +5,7 @@ using StackExchange.Redis;
 
 namespace data_access.redis.database
 {
-    public class RedisDbService<T> : IDataAccess<T>, IDisposable where T : IRedisEntity, new()
+    public class RedisDbService<T> : IDataAccess<T>, IDisposable where T : IRedisDbEntity
     {
         private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _db;

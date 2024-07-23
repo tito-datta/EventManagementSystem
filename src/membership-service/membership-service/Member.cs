@@ -2,7 +2,7 @@
 
 namespace MebershipService
 {
-    public class Member : MemberBase, IRedisEntity
+    public class Member : MemberBase, IRedisDbEntity
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
 

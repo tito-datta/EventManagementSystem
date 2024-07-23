@@ -90,6 +90,27 @@ spec:
             cpu: 500m
             memory: 512Mi
 
+      # organisation service container
+      - name: organisation-service
+        image: localhost/organisation-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8090
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: DEBUG
+          value: "true"
+        - name: Redis
+          value: "localhost:6379" 
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
       # Redis sidecar container
       - name: redis-sidecar
         image: docker.io/redis/redis-stack:latest
@@ -127,6 +148,9 @@ spec:
     name: user-service
   - port: 8090
     targetPort: 8090
+    name: membership-service
+  - port: 8100
+    targetPort: 8100
     name: membership-service
   - port: 8001
     targetPort: 8001
