@@ -1,8 +1,5 @@
-﻿
-using Bogus.DataSets;
-using Microsoft.Azure.Cosmos;
+﻿using models;
 using org_service;
-using System.Security.Cryptography;
 
 namespace org_api
 {
@@ -13,8 +10,11 @@ namespace org_api
             app.MapGet("/organisations", GetOrganisations)
                .WithName(nameof(GetOrganisations))
                .WithOpenApi();
-            app.MapGet("/organisation/{name}", GetOrgByName)
-               .WithName(nameof(GetOrgByName))
+            app.MapGet("/organisation/{name}", GetOrganisdationByName)
+               .WithName(nameof(GetOrganisdationByName))
+               .WithOpenApi();
+            app.MapGet("/organisation/{id}", GetOrganisdationById)
+               .WithName(nameof(GetOrganisdationById))
                .WithOpenApi();
             app.MapPost("/organisation", AddOrganisation)
                .WithName(nameof(AddOrganisation))
@@ -22,6 +22,7 @@ namespace org_api
             app.MapPut("/organisation", ModifyOrganisation)
                .WithName(nameof(ModifyOrganisation))
                .WithOpenApi();
+
             app.MapDelete("/organisation/{name}", DeleteOrganisationByName)
                .WithName(nameof(DeleteOrganisationByName))
                .WithOpenApi();
@@ -30,11 +31,34 @@ namespace org_api
                .WithOpenApi();
         }
 
+        private static async Task<IResult> GetOrganisdationById(string organisationId, OrganisationService svc)
+        {
+            if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
+
+            var organisationsResult = (await svc.GetAsync());
+
+            if (organisationsResult.Error is not null && organisationsResult.Content.GetType() == typeof(Exception))
+            {
+                return Results.Problem(organisationsResult.Error);
+            }
+
+            var result = (organisationsResult.Content as Organisation[]).SingleOrDefault(o => o.Id.ToString() == organisationId);
+
+            if(result == null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(result);
+        }
+
         private static async Task<IResult> DeleteOrganisationByName(string name, OrganisationService svc)
         {
+            if (name is null || name == string.Empty) return Results.BadRequest();
+
             var result = await svc.DeleteOrganisationAsync(name);
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
             }
@@ -44,9 +68,12 @@ namespace org_api
 
         private static async Task<IResult> DeleteOrganisationById(string name, string orgId, OrganisationService svc)
         {
+            if (name is null || name == string.Empty) return Results.BadRequest();
+            if (orgId is null || orgId == string.Empty) return Results.BadRequest();
+
             var result = await svc.DeleteOrganisationAsync(name, orgId);
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
             }
@@ -56,9 +83,11 @@ namespace org_api
 
         private static async Task<IResult> ModifyOrganisation(Organisation org, OrganisationService svc)
         {
+            if (org is null) return Results.BadRequest();
+
             var result = await svc.UpdateOrganisationAsync(org);
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
             }
@@ -68,9 +97,11 @@ namespace org_api
 
         private static async Task<IResult> AddOrganisation(Organisation org, OrganisationService svc)
         {
+            if (org is null) return Results.BadRequest();
+
             var result = await svc.CreateOrganisationAsync(org);
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
             }
@@ -78,11 +109,13 @@ namespace org_api
             return Results.Accepted();
         }
 
-        private static async Task<IResult> GetOrgByName(string name, OrganisationService svc)
+        private static async Task<IResult> GetOrganisdationByName(string name, OrganisationService svc)
         {
+            if (name is null || name == string.Empty) return Results.BadRequest();
+
             var result = await svc.GetByNameAsync(name);
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
             }
@@ -94,9 +127,14 @@ namespace org_api
         {
             var result = await svc.GetAsync();
 
-            if (result.Error is not null && result.Content.GetType() == typeof(CosmosException))
+            if (result.Error is not null && result.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(result.Error);
+            }
+
+            if (result.Content is null)
+            {
+                return Results.NotFound();
             }
 
             return Results.Ok(result.Content);

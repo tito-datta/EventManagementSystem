@@ -1,5 +1,6 @@
 using data_access.redis.database;
 using Microsoft.OpenApi.Models;
+using models;
 using org_api;
 using org_service;
 
@@ -13,9 +14,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Register services
-// Register Db
+// Register cache
 builder.Services.AddSingleton(new RedisDbService<Organisation>(builder.Configuration.GetSection("Redis").Value!, "Organisation-Service"));
-builder.Services.AddSingleton(s => new OrganisationDataFakeGenerator(s.GetRequiredService<RedisDbService<Organisation>>()));
 builder.Services.AddScoped(s => new OrganisationService(s.GetRequiredService<RedisDbService<Organisation>>()));
 
 var app = builder.Build();
@@ -30,23 +30,5 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapOrgEndpoints();
-
-app.MapPost("organisation-gen-fake-data", async (int count, OrganisationDataFakeGenerator generator) =>
-{
-    if (count == 0)
-    {
-        return Results.BadRequest("Count has be at least 1.");
-    }
-
-    try
-    {
-        await generator.GenerateAndStoreTestData(count);
-        return Results.Created();
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem(ex.Message);
-    }
-});
 
 app.Run();

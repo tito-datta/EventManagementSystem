@@ -1,37 +1,35 @@
+using System.Collections.Immutable;
+using System.Linq.Expressions;
 using System.Text.Json;
-using NRedisStack;
-using NRedisStack.RedisStackCommands;
+using Redis.OM;
+using Redis.OM.Contracts;
+using Redis.OM.Searching;
 using StackExchange.Redis;
 
 namespace data_access.redis.database
 {
-    public class RedisDbService<T> : IDataAccess<T>, IDisposable where T : IRedisDbEntity
+    public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
     {
-        private readonly ConnectionMultiplexer _redis;
-        private readonly IDatabase _db;
-        private readonly string _prefix;
-        private readonly JsonCommands _json;
+        private readonly IRedisConnectionProvider _connectionProvider;
+        private readonly IRedisCollection<T> _collection;
 
         public RedisDbService(string connectionString, string prefix)
         {
             var options = ConfigurationOptions.Parse(connectionString);
-            options.AbortOnConnectFail = false;
-            options.AsyncTimeout = 10000; // 10 seconds
+            options.SyncTimeout = 15000; // 15 seconds
+            options.ConnectTimeout = 15000; // 15 seconds
 
-            _redis = ConnectionMultiplexer.Connect(options);
-            _db = _redis.GetDatabase();
-            _prefix = prefix;
-            _json = _db.JSON();
+            _connectionProvider = new RedisConnectionProvider(options);
+            _connectionProvider.Connection.CreateIndex(typeof(T));
+            _collection = new RedisCollection<T>(_connectionProvider.Connection);
         }
-
-        private string GetKey(string id) => $"{_prefix}:{id}";
 
         public async Task<T> GetAsync(string id, string partKey)
         {
-            var result = await _json.GetAsync(GetKey(id));
-            if(result != null && result != default)
+            var result = await _collection.SingleAsync(a => a.Id.ToString() == id);
+            if(result != null)
             {
-                return JsonSerializer.Deserialize<T>(result.ToString());
+                return result;
             }
 
             return default;
@@ -39,40 +37,36 @@ namespace data_access.redis.database
 
         public async Task CreateAsync(T item)
         {
-            await _json.SetAsync(GetKey(item.Id), "$", JsonSerializer.Serialize(item));
-        }
-
-        public async Task DeleteAsync(T item)
-        {
-            await _db.KeyDeleteAsync(GetKey(item.Id));
-        }
-
-        public async Task<T[]> GetAllAsync()
-        {
-            var server = _redis.GetServer(_redis.GetEndPoints().First());
-            var results = new List<T>();
-
-            await foreach (var key in server.KeysAsync(pattern: $"{_prefix}:*"))
+            if (await _collection.AnyAsync(a => a.Id == item.Id))
             {
-                var result = await _json.GetAsync(key);
-                if (result != null)
-                {
-                    var item = JsonSerializer.Deserialize<T>(result.ToString());
-                    if (item != null)
-                    {
-                        results.Add(item);
-                    }
-                }
+                await UpdateAsync(item);
+            }
+            else
+            {
+                await _collection.InsertAsync(item);
             }
 
-            return results.ToArray();
+            await _collection.SaveAsync();
         }
 
-        public async Task UpdateAsync(T item) => await CreateAsync(item);
+        public async Task DeleteAsync(T item) => await _collection.DeleteAsync(item);
 
-        public void Dispose()
+        public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query(_collection.ToImmutableArray());
+
+        public async Task<S[]> QueryAsync<S>(Func<ImmutableArray<T>, Task<S[]>> query) => await query(_collection.ToImmutableArray());
+
+        public async Task<bool> UpdateAsync(T item)
         {
-            _redis.Dispose();
+            try
+            {
+                await _collection.UpdateAsync(item);
+                await _collection.SaveAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
     }
 }

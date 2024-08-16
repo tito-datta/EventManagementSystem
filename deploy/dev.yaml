@@ -6,11 +6,11 @@ metadata:
   name: redis-data
 spec:
   capacity:
-    storage: 128Mi  # Allocate 100 MiB of storage
+    storage: 128Mi  
   accessModes:
-    - ReadWriteOnce  # Can be mounted as read-write by a single node
-  persistentVolumeReclaimPolicy: Retain  # Keep the volume after claim is released
-  storageClassName: manual  # Used to bind this PV to a specific PVC
+    - ReadWriteOnce 
+  persistentVolumeReclaimPolicy: Retain  
+  storageClassName: manual  
   hostPath:
     path: "/data/redis"  # Path on the host where data will be stored
     type: DirectoryOrCreate
@@ -22,12 +22,12 @@ kind: PersistentVolumeClaim
 metadata:
   name: redis-data-claim
 spec:
-  storageClassName: manual  # Must match the PV's storageClassName
+  storageClassName: manual
   accessModes:
-    - ReadWriteOnce  # Matches the PV's access mode
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 128Mi  # Request 500 MiB of storage
+      storage: 128Mi 
 
 ---
 # Deployment for the application with Redis sidecar
@@ -38,7 +38,7 @@ metadata:
   labels:
     app: app-with-redis-sidecar
 spec:
-  replicas: 1  # Run two instances of this deployment
+  replicas: 1 
   selector:
     matchLabels:
       app: app-with-redis-sidecar
@@ -47,55 +47,13 @@ spec:
       labels:
         app: app-with-redis-sidecar
     spec:
-      containers:
-      # user service container
-      - name: user-service
-        image: localhost/user-service:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8080  # Expose port 8080
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Development"
-        - name: DEBUG
-          value: "true"
-        - name: Redis
-          value: "localhost:6379"  # Connect to Redis on localhost
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-
-      # membership service container
-      - name: membership-service
-        image: localhost/membership-service:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8090
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Development"
-        - name: DEBUG
-          value: "true"
-        - name: Redis
-          value: "localhost:6379" 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-
+      containers:      
       # organisation service container
       - name: organisation-service
-        image: localhost/organisation-service:latest
+        image: localhost/org-svc:latest
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8090
+        - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
@@ -109,7 +67,7 @@ spec:
             memory: 128Mi
           limits:
             cpu: 500m
-            memory: 512Mi
+            memory: 256Mi
 
       # Redis sidecar container
       - name: redis-sidecar
@@ -139,21 +97,42 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-app-service
+  name: ems-dev-service
 spec:
-  type: ClusterIP  # Internal service, not exposed outside the cluster
+  type: ClusterIP 
   ports:
   - port: 8080
     targetPort: 8080
-    name: user-service
-  - port: 8090
-    targetPort: 8090
-    name: membership-service
-  - port: 8100
-    targetPort: 8100
-    name: membership-service
+    name: organisation-service
   - port: 8001
     targetPort: 8001
     name: redis-sidecar
   selector:
-    app: app-with-redis-sidecar  # Select pods with this label
+    app: app-with-redis-sidecar
+
+---
+# HorizontalPodAutoscaler for app-with-redis-sidecar
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-with-redis-sidecar-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app-with-redis-sidecar
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75

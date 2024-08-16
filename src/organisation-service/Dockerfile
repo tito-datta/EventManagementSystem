@@ -3,14 +3,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine as publish
 
 WORKDIR /app
 
-# Copy the data access layer
 COPY src/access-layer/data-access/ ./access-layer/data-access/
-
-# Copy the organisation service
+COPY src/models/ ./models/
 COPY src/organisation-service/ ./organisation-service/
 
 # Perform necessary operations like restoring packages and building the project
-RUN dotnet publish ./organisation-service/organisation-api/organisation-api.csproj \
+RUN dotnet publish ./organisation-service/org-api/org-api.csproj \
         --self-contained true \
         --runtime linux-musl-x64 \
         --configuration Release \
@@ -51,4 +49,4 @@ EXPOSE 8080
 COPY --from=publish /app/publish .
 
 # Define the entry point for the container
-ENTRYPOINT ["./organisation-api"]
+ENTRYPOINT ["./org-api"]

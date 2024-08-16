@@ -1,5 +1,8 @@
 ﻿using data_access;
+using data_access.redis.cache;
 using data_access.redis.database;
+using models;
+using System.Collections.Immutable;
 
 namespace org_service
 {
@@ -16,12 +19,14 @@ namespace org_service
         {
             try
             {
-                var result = await _dbSvc.GetAllAsync();
+                var result = await _dbSvc.QueryAsync(a => Task.FromResult(a.ToArray()));
                 return new() { Content = result };
             }
             catch (Exception ex)
             {
-                return new() { Error = ex.Message, Content = ex };
+                return ex.Message.Contains("no such index") 
+                       ? new() { Content = null } 
+                       : new() { Error = ex.Message, Content = ex };
             }
         }
 
@@ -29,11 +34,10 @@ namespace org_service
         {
             try
             {
-                var all = await _dbSvc.GetAllAsync();
+                var all = await _dbSvc.QueryAsync(o => Task.FromResult(o.Where(oo => oo.Name == name).ToArray()));
                 if(all is not null && all.Length > 0)
-                {
-                    var result = all.Where(a => a.Name == name);
-                    return new() { Content = result };
+                {                    
+                    return new() { Content = all };
                 }
                 return new() { Content = string.Format("No match found for {0}.", name) };
             }
@@ -65,7 +69,7 @@ namespace org_service
             
             try
             {
-                var toDelete = await _dbSvc.GetAllAsync();
+                var toDelete = await _dbSvc. QueryAsync(o => Task.FromResult(o.Where(oo => oo.Name == name).ToArray()));
                 if(toDelete is not null && toDelete.Length is not 0)
                 {
                     if (toDelete.Length > 1)
@@ -96,6 +100,111 @@ namespace org_service
             catch (Exception ex)
             {
                 return new() { Error = ex.Message, Content = ex };
+            }
+        }        
+
+        public async Task<Result> GetAllUsersForAnOrgAsync(string orgId)
+        {
+            if(string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+
+            try
+            {
+                var users = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org
+                                                                            where o.Id.ToString() == orgId
+                                                                            select o.Users).ToArray()));
+
+                if (users == null|| users.Length == 0)
+                {
+                    return new() { Content = string.Format("Organisation with id {0} has no users.", orgId) };
+                }
+
+                return new() { Content = users };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> GetAllMembersForAnOrgAsync(string orgId)
+        {
+            if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+
+            try
+            {
+                var members = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org
+                                                                                   where o.Id.ToString() == orgId
+                                                                                   select o.Members).ToArray()));
+
+                if (members == null || members.Length == 0)
+                {
+                    return new() { Content = string.Format("Organisation with id {0} has no members.", orgId) };
+                }
+
+                return new() { Content = members };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> GetUserDetailsAsync(string userName, string orgId)
+        {
+            if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+
+            try
+            {
+                var users = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org 
+                                                                            where o.Id.ToString() == orgId 
+                                                                                from usr in o.Users 
+                                                                                where usr.Name == userName 
+                                                                            select usr).ToArray()));
+
+                if (users == null || users.Length == 0)
+                {
+                    return new() { Content = string.Format("Organisation with id {0} has no users.", orgId) };
+                }
+
+                return new() { Content = users.Length > 1 ? users : users.Single() };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+        }
+
+        public async Task<Result> GeMemberDetailsAsync(string memberName, string orgId)
+        {
+            if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+
+            try
+            {
+                var members = await _dbSvc.QueryAsync(o => Task.FromResult(query(memberName, orgId, o)));
+
+                if (members == null || members.Length == 0)
+                {
+                    return new() { Content = string.Format("Organisation with id {0} has no members.", orgId) };
+                }
+
+                return new() { Content = members.Length > 1 ? members : members.Single() };
+            }
+            catch (Exception ex)
+            {
+                return new() { Error = ex.Message, Content = ex };
+            }
+
+            Member[] query(string memberName,
+                           string orgId,
+                           System.Collections.Immutable.ImmutableArray<Organisation> o)
+            {
+                var result = from org in o 
+                             where org.Id.ToString() == orgId 
+                                from member in org.Members 
+                                where member.Name == memberName 
+                             select member;
+
+                return result.ToArray();
             }
         }
     }
