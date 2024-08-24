@@ -8,10 +8,7 @@ public class OrganisationService
 {
     private readonly RedisDbService<Organisation> _dbSvc;
 
-    public OrganisationService(RedisDbService<Organisation> dbSvc)
-    {
-        _dbSvc = dbSvc;
-    }
+    public OrganisationService(RedisDbService<Organisation> dbSvc) => _dbSvc = dbSvc;
 
     public async Task<Result> GetAsync()
     {
@@ -51,8 +48,7 @@ public class OrganisationService
 
         try
         {
-            var organisation = _dbSvc.QueryAsync(o => Task.FromResult(o.Where(oo => oo.Id.ToString().Equals(id)).ToArray())).Result
-                                     .SingleOrDefault();
+            var organisation = (await _dbSvc.QueryAsync(o => Task.FromResult(new Organisation[] { o.Single(oo => oo.Id.ToString().Equals(id)) })))[0];
 
             if (organisation is Organisation)
             {
