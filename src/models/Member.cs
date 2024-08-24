@@ -1,25 +1,23 @@
 ﻿using data_access.redis;
 using Redis.OM.Modeling;
-using System.Text.Json.Serialization;
 
 namespace models
 {
-
+    [Document(StorageType = StorageType.Json, Prefixes = ["Member"])]
     public record Member : MemberBase, IRedisDbEntity
     {
         [RedisIdField]
         [Indexed]
         public Ulid Id { get; set; } = Ulid.NewUlid();
 
+        [Indexed]
         public required string OrganisationId { get; set; }
 
         [Indexed(CascadeDepth = 1)]
-        public MemberBase[] Dependents { get; set; }
-
-        [JsonIgnore]
-        public string PartitionKey => OrganisationId;
+        public MemberBase[] Dependents { get; set; } = [];
     }
 
+    [Document(StorageType = StorageType.Json, Prefixes = ["MemberBase"])]
     public record MemberBase
     {
         [Searchable]
@@ -28,9 +26,9 @@ namespace models
         [Indexed]
         public required string Email { get; set; }
 
-        [Indexed]
+        [Indexed, Searchable]
         public required string PhoneNumber { get; set; }
 
-        public string Address { get; set; }
+        public GeoLoc Address { get; set; }
     }
 }

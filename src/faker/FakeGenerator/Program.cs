@@ -3,20 +3,29 @@ using data_access.redis;
 using data_access.redis.database;
 using FakeGenerator;
 using models;
+using Redis.OM;
+using StackExchange.Redis;
 
 internal class Program
 {
     private static void Main(string[] args)
     {
-        var connString = "localhost:6378";
+        var connString = "redis://localhost:6379";
 
         OrganisationFaker orgFaker = new();
-        var organisations = orgFaker.GenerateBetween(2, 10);
+        var organisations = orgFaker.GenerateBetween(1, 5);
 
-        RedisDbService<Organisation> dbSvc = new(connString, "Organisation");
+        var connectionProvider = new RedisConnectionProvider(connString);
+        RedisDbService<Organisation> dbSvc = new(connectionProvider);
+        connectionProvider.Connection.CreateIndex(typeof(Organisation));
+        
+        organisations.ForEach(async o => 
+        {
+            Console.WriteLine($"Creating {o.Name} fake organisation...");
+            await dbSvc.CreateAsync(o); 
+        });
 
-        organisations.ForEach(async o => await dbSvc.CreateAsync(o));
-
+        Console.WriteLine($"Generated {organisations.Count()} fake items...");
         Console.WriteLine("Done...");
         Console.ReadLine();
     }

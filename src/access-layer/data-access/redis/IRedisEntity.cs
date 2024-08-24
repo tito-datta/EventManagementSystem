@@ -1,16 +1,20 @@
 using StackExchange.Redis;
 using System.Text.Json;
+using System;
+using Redis.OM.Modeling;
 
 namespace data_access.redis
 {
     public interface IRedisEntity
     {
+        [RedisIdField]
         public Ulid Id { get; }        
     }
 
     public interface IRedisDbEntity : IRedisEntity
     {
-        public string PartitionKey { get; }
+        // i shall fix it later
+        //public string PartitionKey { get; }
     }
 
     public interface IRedisCacheEntity : IRedisEntity

@@ -1,4 +1,5 @@
-﻿using models;
+﻿using Microsoft.AspNetCore.Mvc;
+using models;
 using org_service;
 
 namespace org_api
@@ -13,7 +14,7 @@ namespace org_api
             app.MapGet("/organisation/{name}", GetOrganisdationByName)
                .WithName(nameof(GetOrganisdationByName))
                .WithOpenApi();
-            app.MapGet("/organisation/{id}", GetOrganisdationById)
+            app.MapGet("/organisation/ID/{id}", GetOrganisdationById)
                .WithName(nameof(GetOrganisdationById))
                .WithOpenApi();
             app.MapPost("/organisation", AddOrganisation)
@@ -22,7 +23,7 @@ namespace org_api
             app.MapPut("/organisation", ModifyOrganisation)
                .WithName(nameof(ModifyOrganisation))
                .WithOpenApi();
-
+            // need something for PATCH operations
             app.MapDelete("/organisation/{name}", DeleteOrganisationByName)
                .WithName(nameof(DeleteOrganisationByName))
                .WithOpenApi();
@@ -35,21 +36,19 @@ namespace org_api
         {
             if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
 
-            var organisationsResult = (await svc.GetAsync());
+            var organisationsResult = (await svc.GetByIdAsync(organisationId));
 
             if (organisationsResult.Error is not null && organisationsResult.Content.GetType() == typeof(Exception))
             {
                 return Results.Problem(organisationsResult.Error);
-            }
+            }            
 
-            var result = (organisationsResult.Content as Organisation[]).SingleOrDefault(o => o.Id.ToString() == organisationId);
-
-            if(result == null)
-            {
+            if(organisationsResult == null || organisationsResult.Content is not Organisation)
+            {                
                 return Results.NotFound();
             }
 
-            return Results.Ok(result);
+            return Results.Ok(organisationsResult);
         }
 
         private static async Task<IResult> DeleteOrganisationByName(string name, OrganisationService svc)

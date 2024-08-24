@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Linq.Expressions;
 using System.Text.Json;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -11,17 +10,13 @@ namespace data_access.redis.database
     public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
     {
         private readonly IRedisConnectionProvider _connectionProvider;
-        private readonly IRedisCollection<T> _collection;
+        private readonly IRedisCollection<T> _collection;        
 
-        public RedisDbService(string connectionString, string prefix)
+        public RedisDbService(IRedisConnectionProvider connPro)
         {
-            var options = ConfigurationOptions.Parse(connectionString);
-            options.SyncTimeout = 15000; // 15 seconds
-            options.ConnectTimeout = 15000; // 15 seconds
+            _connectionProvider = connPro;
 
-            _connectionProvider = new RedisConnectionProvider(options);
-            _connectionProvider.Connection.CreateIndex(typeof(T));
-            _collection = new RedisCollection<T>(_connectionProvider.Connection);
+            _collection = new RedisCollection<T>(_connectionProvider.Connection, true, chunkSize: 300);
         }
 
         public async Task<T> GetAsync(string id, string partKey)
@@ -37,19 +32,28 @@ namespace data_access.redis.database
 
         public async Task CreateAsync(T item)
         {
-            if (await _collection.AnyAsync(a => a.Id == item.Id))
+            if(item == null) throw new ArgumentNullException(nameof(item));
+
+            var isPresent = _collection.Where(a => a.Id == item.Id) != null;
+
+            if (!isPresent)
             {
-                await UpdateAsync(item);
+                await _collection.InsertAsync(item);
             }
             else
             {
-                await _collection.InsertAsync(item);
+                await _collection.UpdateAsync(item);
             }
 
             await _collection.SaveAsync();
         }
 
-        public async Task DeleteAsync(T item) => await _collection.DeleteAsync(item);
+        public async Task DeleteAsync(T item)
+        {
+            if(item is null) throw new ArgumentNullException(nameof(item));
+
+            await _collection.DeleteAsync(item);
+        }
 
         public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query(_collection.ToImmutableArray());
 

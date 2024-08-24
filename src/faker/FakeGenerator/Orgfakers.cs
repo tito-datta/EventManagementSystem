@@ -1,5 +1,6 @@
 ﻿using Bogus;
 using models;
+using Redis.OM.Modeling;
 
 namespace FakeGenerator
 {
@@ -11,6 +12,7 @@ namespace FakeGenerator
             RuleFor(o => o.Name, f => f.Company.CompanyName());
             RuleFor(o => o.Email, (f, o) => f.Internet.ExampleEmail(o.Name, o.Id.ToString()));
             RuleFor(o => o.Address, f => f.Address.FullAddress());
+            RuleFor(o => o.Phone, (f) => f.Phone.PhoneNumber("(91) ##### #####"));
             RuleFor(o => o.BillingAddress, f => {
                 if (f.Random.Bool())
                 {
@@ -33,7 +35,7 @@ namespace FakeGenerator
             RuleFor(m => m.Name, f => f.Name.FullName());
             RuleFor(m => m.Email, (f, m) => f.Internet.Email(m.Name.Split(" ")[0], m.Name.Split(" ")[1]));
             RuleFor(m => m.PhoneNumber, f => f.Phone.PhoneNumber("(91) ##### #####"));
-            RuleFor(m => m.Address, f => f.Address.FullAddress());
+            RuleFor(m => m.Address, f => new GeoLoc(f.Address.Longitude(), f.Address.Latitude()));
             RuleFor(m => m.Dependents,
                     (f, m) => new MemberBaseFaker(m.Name.Split(" ")[1], m.Address).GenerateBetween<MemberBase>(1, 5).ToArray());
         }
@@ -41,7 +43,7 @@ namespace FakeGenerator
 
     public class MemberBaseFaker : Faker<MemberBase>
     {
-        public MemberBaseFaker(string lastName, string address)
+        public MemberBaseFaker(string lastName, GeoLoc address)
         {
             RuleFor(mb => mb.Name, f => f.Name.FirstName() + " " + lastName);
             RuleFor(mb => mb.Email, (f, mb) => f.Internet.Email(mb.Name));
@@ -59,7 +61,7 @@ namespace FakeGenerator
             RuleFor(u => u.Name, f => f.Name.FullName());
             RuleFor(u => u.Phone, f => f.Phone.PhoneNumber("(91) ##### #####"));
             RuleFor(u => u.Type, f => f.Random.Bool() ? 1 : 0);
-            RuleFor(u => u.Email, (f, u) => f.Internet.Email(u.Name.Split(" ")[0], u.Name.Split(" ")[1], provider: orgName));
+            RuleFor(u => u.Email, (f, u) => f.Internet.Email(u.Name.Split(" ")[0], u.Name.Split(" ")[1]));
         }
     }
 }

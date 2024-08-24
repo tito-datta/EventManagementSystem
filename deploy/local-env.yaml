@@ -48,26 +48,26 @@ spec:
         app: app-with-redis-sidecar
     spec:
       containers:      
-      # organisation service container
-      - name: organisation-service
-        image: localhost/org-svc:1.0
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8080
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Development"
-        - name: DEBUG
-          value: "true"
-        - name: Redis
-          value: "localhost:6379" 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 256Mi
+      # # organisation service container
+      # - name: organisation-service
+      #   image: localhost/org-svc:1.0
+      #   imagePullPolicy: IfNotPresent
+      #   ports:
+      #   - containerPort: 8080
+      #   env:
+      #   - name: ASPNETCORE_ENVIRONMENT
+      #     value: "Development"
+      #   - name: DEBUG
+      #     value: "true"
+      #   - name: Redis
+      #     value: "localhost:6379" 
+      #   resources:
+      #     requests:
+      #       cpu: 100m
+      #       memory: 128Mi
+      #     limits:
+      #       cpu: 500m
+      #       memory: 256Mi
 
       # Redis sidecar container
       - name: redis-sidecar
@@ -97,13 +97,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ems-dev-service
+  name: local-env
 spec:
   type: ClusterIP 
   ports:
   - port: 8080
     targetPort: 8080
     name: organisation-service
+  - port: 6379
+    targetPort: 6379
+    name: redis-server    
   - port: 8001
     targetPort: 8001
     name: redis-sidecar
