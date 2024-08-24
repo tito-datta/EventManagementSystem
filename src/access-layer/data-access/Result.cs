@@ -10,5 +10,7 @@ namespace data_access
     {
         public string Error { get; set; }
         public object Content { get; set; }
+
+        internal bool IsError => !string.IsNullOrEmpty(Error);
     }
 }

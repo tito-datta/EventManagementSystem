@@ -1,37 +1,30 @@
+using System.Collections.Immutable;
 using System.Text.Json;
-using NRedisStack;
-using NRedisStack.RedisStackCommands;
+using Redis.OM;
+using Redis.OM.Contracts;
+using Redis.OM.Searching;
 using StackExchange.Redis;
 
 namespace data_access.redis.database
 {
-    public class RedisDbService<T> : IDataAccess<T>, IDisposable where T : IRedisEntity, new()
+    public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
     {
-        private readonly ConnectionMultiplexer _redis;
-        private readonly IDatabase _db;
-        private readonly string _prefix;
-        private readonly JsonCommands _json;
+        private readonly IRedisConnectionProvider _connectionProvider;
+        private readonly IRedisCollection<T> _collection;        
 
-        public RedisDbService(string connectionString, string prefix)
+        public RedisDbService(IRedisConnectionProvider connPro)
         {
-            var options = ConfigurationOptions.Parse(connectionString);
-            options.AbortOnConnectFail = false;
-            options.AsyncTimeout = 10000; // 10 seconds
+            _connectionProvider = connPro;
 
-            _redis = ConnectionMultiplexer.Connect(options);
-            _db = _redis.GetDatabase();
-            _prefix = prefix;
-            _json = _db.JSON();
+            _collection = new RedisCollection<T>(_connectionProvider.Connection, true, chunkSize: 300);
         }
-
-        private string GetKey(string id) => $"{_prefix}:{id}";
 
         public async Task<T> GetAsync(string id, string partKey)
         {
-            var result = await _json.GetAsync(GetKey(id));
-            if(result != null && result != default)
+            var result = await _collection.SingleAsync(a => a.Id.ToString() == id);
+            if(result != null)
             {
-                return JsonSerializer.Deserialize<T>(result.ToString());
+                return result;
             }
 
             return default;
@@ -39,40 +32,45 @@ namespace data_access.redis.database
 
         public async Task CreateAsync(T item)
         {
-            await _json.SetAsync(GetKey(item.Id), "$", JsonSerializer.Serialize(item));
+            if(item == null) throw new ArgumentNullException(nameof(item));
+
+            var isPresent = _collection.Where(a => a.Id == item.Id) != null;
+
+            if (!isPresent)
+            {
+                await _collection.InsertAsync(item);
+            }
+            else
+            {
+                await _collection.UpdateAsync(item);
+            }
+
+            await _collection.SaveAsync();
         }
 
         public async Task DeleteAsync(T item)
         {
-            await _db.KeyDeleteAsync(GetKey(item.Id));
+            if(item is null) throw new ArgumentNullException(nameof(item));
+
+            await _collection.DeleteAsync(item);
         }
 
-        public async Task<T[]> GetAllAsync()
-        {
-            var server = _redis.GetServer(_redis.GetEndPoints().First());
-            var results = new List<T>();
+        public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query(_collection.ToImmutableArray());
 
-            await foreach (var key in server.KeysAsync(pattern: $"{_prefix}:*"))
+        public async Task<S[]> QueryAsync<S>(Func<ImmutableArray<T>, Task<S[]>> query) => await query(_collection.ToImmutableArray());
+
+        public async Task<bool> UpdateAsync(T item)
+        {
+            try
             {
-                var result = await _json.GetAsync(key);
-                if (result != null)
-                {
-                    var item = JsonSerializer.Deserialize<T>(result.ToString());
-                    if (item != null)
-                    {
-                        results.Add(item);
-                    }
-                }
+                await _collection.UpdateAsync(item);
+                await _collection.SaveAsync();
+                return true;
             }
-
-            return results.ToArray();
-        }
-
-        public async Task UpdateAsync(T item) => await CreateAsync(item);
-
-        public void Dispose()
-        {
-            _redis.Dispose();
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
     }
 }

@@ -9,9 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.12.0" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.41.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.7" />
     <PackageReference Include="NRedisStack" Version="0.12.0" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.0" />
+    <PackageReference Include="Redis.OM" Version="0.7.4" />
   </ItemGroup>
 
 </Project>
