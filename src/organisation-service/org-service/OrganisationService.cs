@@ -133,9 +133,7 @@ public class OrganisationService
 
         try
         {
-            var users = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org
-                                                                        where o.Id.ToString() == orgId
-                                                                        select o.Users).ToArray()));
+            var users = await _dbSvc.QueryAsync(org => Task.FromResult(org.SingleOrDefault(oo => oo.Id.ToString().Equals(orgId))?.Users ?? []));
 
             if (users == null || users.Length == 0)
             {
@@ -156,9 +154,7 @@ public class OrganisationService
 
         try
         {
-            var members = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org
-                                                                          where o.Id.ToString() == orgId
-                                                                          select o.Members).ToArray()));
+            var members = await _dbSvc.QueryAsync(org => Task.FromResult(org.SingleOrDefault(oo => oo.Id.ToString().Equals(orgId))?.Members ?? []));
 
             if (members == null || members.Length == 0)
             {
