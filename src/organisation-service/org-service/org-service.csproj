@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bogus" Version="35.6.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\access-layer\data-access\data-access.csproj" />
     <ProjectReference Include="..\..\models\models.csproj" />
   </ItemGroup>
