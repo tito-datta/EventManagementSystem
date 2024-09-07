@@ -55,9 +55,9 @@ namespace data_access.redis.database
             await _collection.DeleteAsync(item);
         }
 
-        public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query(_collection.ToImmutableArray());
+        public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query([.. _collection]);
 
-        public async Task<S[]> QueryAsync<S>(Func<ImmutableArray<T>, Task<S[]>> query) => await query(_collection.ToImmutableArray());
+        public async Task<S[]> QueryAsync<S>(Func<ImmutableArray<T>, Task<S[]>> query) => await query([.. _collection]);
 
         public async Task<bool> UpdateAsync(T item)
         {

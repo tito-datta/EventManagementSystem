@@ -5,6 +5,7 @@ using models;
 using org_api;
 using org_service;
 using Redis.OM;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -22,7 +23,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Register Redis
-//builder.Services.AddSingleton(new RedisDbService<Organisation>(builder.Configuration.GetSection("Redis").Value!, "Organisation"));
 builder.Services.AddSingleton(new RedisDbService<Organisation>(new RedisConnectionProvider(builder.Configuration.GetSection("Redis").Value!)));
 
 // Register services
@@ -31,6 +31,7 @@ builder.Services.AddScoped(s => new OrganisationService(s.GetRequiredService<Red
 var app = builder.Build();
 
 //create index
+//to-do: check if index exists
 var connectionProvider = new RedisConnectionProvider(app.Configuration["Redis"]!);
 connectionProvider.Connection.CreateIndex(typeof(Organisation));
 
@@ -44,7 +45,23 @@ if (app.Environment.IsDevelopment())
             DocumentTitle = "Organisation services"
         };
     });
+    app.UseDeveloperExceptionPage();
 }
+
+// Middlewares
+// Example middleware
+app.Use(async (ctx, next) =>
+{
+    Stopwatch watch = new();
+    watch.Start();
+    ctx.Response.OnCompleted(() =>
+    {
+        watch.Stop();
+        return Task.CompletedTask;
+    });
+    _ = ctx.Response.Headers.TryAdd("X-Response-Time", string.Format("{0} ms", watch.ElapsedMilliseconds.ToString()));
+    await next.Invoke();
+});
 
 app.UseHttpsRedirection();
 

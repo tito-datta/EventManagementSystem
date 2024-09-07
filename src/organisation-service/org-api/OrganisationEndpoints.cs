@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
 using models;
 using org_service;
 
@@ -23,13 +24,64 @@ namespace org_api
             app.MapPut("/organisation", ModifyOrganisation)
                .WithName(nameof(ModifyOrganisation))
                .WithOpenApi();
-            // need something for PATCH operations
+            app.MapPatch("/organisation/{id}", PatchOrganisation)
+                .WithName(nameof(PatchOrganisation))
+                .WithOpenApi();
             app.MapDelete("/organisation/{name}", DeleteOrganisationByName)
                .WithName(nameof(DeleteOrganisationByName))
                .WithOpenApi();
-            app.MapDelete("/organisation/{name}/{organisationId}", DeleteOrganisationById)
+            app.MapDelete("/organisation/{name}/{id}", DeleteOrganisationById)
                .WithName(nameof(DeleteOrganisationById))
                .WithOpenApi();
+
+            // Users
+            app.MapGet("/users/{organisationId}", GetAllUsers)
+               .WithName(nameof(GetAllUsers))
+               .WithOpenApi();
+
+            // Members
+            app.MapGet("/members/{organisationId}", GetAllMembers)
+               .WithName(nameof(GetAllMembers))
+               .WithOpenApi();
+
+        }
+
+        private static async Task<IResult> GetAllUsers(string organisationId, OrganisationService svc)
+        {
+            if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
+
+            var users = await svc.GetAllUsersForAnOrgAsync(organisationId);
+
+            if(users is null || users.Error is not null)
+            {
+                Results.Problem();
+            }
+
+            if(users!.Content is User[])
+            {
+                return Results.Ok(users!.Content);
+            }
+
+            return Results.NotFound();
+        }
+
+        private static async Task<IResult> GetAllMembers(string organisationId, OrganisationService svc)
+        {
+            if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
+
+            var users = await svc.GetAllMembersForAnOrgAsync(organisationId);
+
+            if (users is null || users.Error is not null)
+            {
+                Results.Problem();
+            }
+
+            if (users!.Content is Member[])
+            {
+                return Results.Ok(users!.Content);
+            }
+
+            return Results.NotFound();
         }
 
         private static async Task<IResult> GetOrganisdationById(string organisationId, OrganisationService svc)
@@ -48,7 +100,7 @@ namespace org_api
                 return Results.NotFound();
             }
 
-            return Results.Ok(organisationsResult);
+            return Results.Ok(organisationsResult.Content as Organisation);
         }
 
         private static async Task<IResult> DeleteOrganisationByName(string name, OrganisationService svc)
@@ -137,6 +189,24 @@ namespace org_api
             }
 
             return Results.Ok(result.Content);
+        }
+
+        private static async Task<IResult> PatchOrganisation(string organisationId,
+                                                             JsonPatchDocument<Organisation> patch,
+                                                             OrganisationService svc)
+        {
+            var organisation = await GetOrganisdationById(organisationId, svc) as Organisation;
+
+            if(organisation is null)
+            {
+                return Results.NotFound();
+            }
+
+            patch.ApplyTo(organisation);
+
+            var result = await ModifyOrganisation(organisation, svc);
+
+            return Results.Accepted();
         }
     }
 }
