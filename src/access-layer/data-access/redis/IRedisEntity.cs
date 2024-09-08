@@ -3,11 +3,12 @@ using System.Text.Json;
 using System;
 using Redis.OM.Modeling;
 
-namespace data_access.redis
+namespace DataAccess.Redis
 {
     public interface IRedisEntity
     {
         [RedisIdField]
+        [Indexed]
         public Ulid Id { get; }        
     }
 

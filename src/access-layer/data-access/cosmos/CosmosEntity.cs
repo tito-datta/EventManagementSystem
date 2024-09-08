@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace data_access.cosmos
+namespace DataAccess.cosmos
 {
     public record CosmosEntity : ICosmosEntity
     {

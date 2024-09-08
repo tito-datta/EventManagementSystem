@@ -1,13 +1,13 @@
-using data_access.redis.database;
+using DataAccess.Redis.Database;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.OpenApi.Models;
 using models;
-using org_api;
-using org_service;
+using OragnosationApi;
 using Redis.OM;
 using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
+
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 
@@ -22,11 +22,25 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Organisation Services", Version = "v1" });
 });
 
+// Configure logging
+builder.Logging.AddConsole();
+builder.Services.AddLogging(logBuilder =>
+{
+    logBuilder.AddConfiguration(builder.Configuration);
+});
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddDebug();
+}
+
+
 // Register Redis
-builder.Services.AddSingleton(new RedisDbService<Organisation>(new RedisConnectionProvider(builder.Configuration.GetSection("Redis").Value!)));
+builder.Services.AddSingleton(s => new RedisDbService<Organisation>(new RedisConnectionProvider(builder.Configuration.GetSection("Redis").Value!),
+                                                                    s.GetService<ILogger<Organisation>>()!));
 
 // Register services
-builder.Services.AddScoped(s => new OrganisationService(s.GetRequiredService<RedisDbService<Organisation>>()));
+builder.Services.AddScoped(s => new OrganisationService.OrganisationService(s.GetRequiredService<RedisDbService<Organisation>>()));
 
 var app = builder.Build();
 

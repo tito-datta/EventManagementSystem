@@ -1,6 +1,6 @@
-﻿using data_access.redis;
+﻿using DataAccess.Redis;
 
-namespace data_access
+namespace DataAccess
 {
     public interface ICacheAccess<T> where T : IRedisEntity
     {

@@ -50,17 +50,17 @@ spec:
       containers:      
       # organisation service container
       - name: organisation-service
-        image: localhost/org-svc:1.0
+        image: localhost/organisation-service:jammy
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
-          value: "Development"
+          value: "Production"
         - name: DEBUG
           value: "true"
         - name: Redis
-          value: "localhost:6379" 
+          value: "redis://host.containers.internal:6379" 
         resources:
           requests:
             cpu: 100m
@@ -102,7 +102,7 @@ spec:
   type: ClusterIP 
   ports:
   - port: 8080
-    targetPort: 8080
+    targetPort: 5000
     name: organisation-service
   - port: 8001
     targetPort: 8001

@@ -2,7 +2,7 @@
 using StackExchange.Redis;
 using System.Text.Json;
 
-namespace data_access.redis.cache
+namespace DataAccess.Redis.cache
 {
     public class RedisCacheService<T> : ICacheAccess<T>, IDisposable where T : class, IRedisCacheEntity
     {
