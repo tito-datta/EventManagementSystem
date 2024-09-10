@@ -1,44 +1,50 @@
 ---
-# PersistentVolume for Redis data
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: org-svc-local
+
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: redis-data
+  namespace: org-svc-local
 spec:
   capacity:
-    storage: 128Mi  
+    storage: 128Mi
   accessModes:
-    - ReadWriteOnce 
-  persistentVolumeReclaimPolicy: Retain  
-  storageClassName: manual  
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
   hostPath:
-    path: "/data/redis"  
+    path: "/data/redis"
     type: DirectoryOrCreate
 
 ---
-# PersistentVolumeClaim for Redis data
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: redis-data-claim
+  namespace: org-svc-local
 spec:
   storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 128Mi 
+      storage: 128Mi
 
 ---
-# Deployment for the application with Redis sidecar
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app-with-redis-sidecar
+  namespace: org-svc-local
   labels:
     app: app-with-redis-sidecar
 spec:
-  replicas: 1 
+  replicas: 1
   selector:
     matchLabels:
       app: app-with-redis-sidecar
@@ -47,8 +53,7 @@ spec:
       labels:
         app: app-with-redis-sidecar
     spec:
-      containers:      
-      # organisation service container
+      containers:
       - name: organisation-service
         image: localhost/organisation-service:jammy
         imagePullPolicy: IfNotPresent
@@ -60,7 +65,7 @@ spec:
         - name: DEBUG
           value: "true"
         - name: Redis
-          value: "redis://host.containers.internal:6379" 
+          value: "redis://localhost:6379"
         resources:
           requests:
             cpu: 100m
@@ -68,16 +73,14 @@ spec:
           limits:
             cpu: 500m
             memory: 256Mi
-
-      # Redis sidecar container
       - name: redis-sidecar
         image: docker.io/redis/redis-stack:latest
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 6379  
+        - containerPort: 6379
         volumeMounts:
         - name: redis-db
-          mountPath: /data  
+          mountPath: /data
         resources:
           requests:
             cpu: 100m
@@ -85,27 +88,69 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-
-      # Volumes for the pod
       volumes:
       - name: redis-db
         persistentVolumeClaim:
-          claimName: redis-data-claim  
+          claimName: redis-data-claim
 
 ---
-# Service to expose the app services
 apiVersion: v1
 kind: Service
 metadata:
-  name: ems-dev-service
+  name: org-svc-local-service
+  namespace: org-svc-local
 spec:
-  type: ClusterIP 
+  type: NodePort
   ports:
   - port: 8080
-    targetPort: 5000
+    targetPort: 8080
+    nodePort: 30050
     name: organisation-service
-  - port: 8001
-    targetPort: 8001
-    name: redis-sidecar
   selector:
     app: app-with-redis-sidecar
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: org-svc-local-ingress
+  namespace: org-svc-local
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - host: org-svc.localhost
+    http:
+      paths:
+      - path: /org-svc(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: org-svc-local-service
+            port: 
+              number: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: org-svc-local-network-policy
+  namespace: org-svc-local
+spec:
+  podSelector:
+    matchLabels:
+      app: app-with-redis-sidecar
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: org-svc-local
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
