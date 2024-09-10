@@ -1,4 +1,4 @@
-﻿namespace data_access.cosmos
+﻿namespace DataAccess.cosmos
 {
     public interface ICosmosEntity
     {

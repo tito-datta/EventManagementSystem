@@ -1,52 +1,28 @@
 # Stage 1: Build and Publish the Application
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine as publish
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 
-WORKDIR /app
+# Copy project files
+COPY ["src/access-layer/data-access/", "access-layer/data-access/"]
+COPY ["src/models/", "models/"]
+COPY ["src/organisation-service/", "organisation-service/"]
 
-COPY src/access-layer/data-access/ ./access-layer/data-access/
-COPY src/models/ ./models/
-COPY src/organisation-service/ ./organisation-service/
-
-# Perform necessary operations like restoring packages and building the project
-RUN dotnet publish ./organisation-service/org-api/org-api.csproj \
-        --self-contained true \
-        --runtime linux-musl-x64 \
-        --configuration Release \
-        --output /app/publish
+# Restore dependencies and publish
+RUN dotnet restore "organisation-service/org-api/org-api.csproj" && \
+    dotnet publish "organisation-service/org-api/org-api.csproj" -c Release \
+    -o /app/publish \
+    --self-contained true 
 
 # Stage 2: Create the Runtime Image
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy-chiseled
 
-# Install libc6-compat for Alpine to ensure glibc compatibility
-RUN apk add libc6-compat icu-libs curl
+WORKDIR /app
 
-# Create a non-root user for running the application
-RUN adduser --disabled-password \
-    --home /app \
-    --gecos '' appuser && chown -R appuser /app
-
-# Upgrade musl to ensure compatibility
-RUN apk upgrade musl
-
-# Set environment variables for localization
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8
-
-# Set the ASP.NET Core environment variable
 ENV ASPNETCORE_URLS=http://+:8080
 
-# Switch to the non-root user
-USER appuser
-
-# Set the working directory in the container
-WORKDIR /app
+COPY --from=build /app/publish .
 
 # Expose port 8080
 EXPOSE 8080
 
-# Copy the published application files from the publish stage
-COPY --from=publish /app/publish .
-
-# Define the entry point for the container
 ENTRYPOINT ["./org-api"]

@@ -70,17 +70,17 @@ Apply the Kubernetes manifests:
 
 Verify the deployment:
 
-    kubectl get pods
+    kubectl get pods -n <namespace>
 
-    kubectl get services
+    kubectl get services -n <namespace>
 
 ## Accessing the Application
 
 Set up port forwarding:
 
-    kubectl port-forward service/user-service 8080:8080 8090:8090 8001:8001
+    kubectl port-forward service/user-service 8080:8080 8001:8001
 
-The application is now accessible at the above ports. 
+The application is now accessible at the 8080 locally. 
 
 note: port 8001 hosts the Redis persistent db service 
 
@@ -90,11 +90,11 @@ If you encounter issues:
 
 Check pod status:
 
-    kubectl describe pod <pod-name>
+    kubectl describe pod <pod-name> -n <namespace>
 
 View logs:
 
-    kubectl logs <pod-name> -c <container-name>
+    kubectl logs <pod-name> -c <container-name> -n <namespace>
 
 Verify images in Kind:
     

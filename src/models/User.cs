@@ -1,4 +1,4 @@
-﻿using data_access.redis;
+﻿using DataAccess.Redis;
 using Redis.OM.Modeling;
 
 namespace models;

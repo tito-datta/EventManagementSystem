@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.AspNetCore.Mvc;
 using models;
-using org_service;
 
-namespace org_api
+namespace OragnosationApi
 {
     public static class OrganisationEndpoints
     {
@@ -46,7 +44,7 @@ namespace org_api
 
         }
 
-        private static async Task<IResult> GetAllUsers(string organisationId, OrganisationService svc)
+        private static async Task<IResult> GetAllUsers(string organisationId, OrganisationService.OrganisationService svc)
         {
             if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
 
@@ -65,7 +63,7 @@ namespace org_api
             return Results.NotFound();
         }
 
-        private static async Task<IResult> GetAllMembers(string organisationId, OrganisationService svc)
+        private static async Task<IResult> GetAllMembers(string organisationId, OrganisationService.OrganisationService svc)
         {
             if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
 
@@ -84,7 +82,7 @@ namespace org_api
             return Results.NotFound();
         }
 
-        private static async Task<IResult> GetOrganisdationById(string organisationId, OrganisationService svc)
+        private static async Task<IResult> GetOrganisdationById(string organisationId, OrganisationService.OrganisationService svc)
         {
             if (organisationId is null || organisationId == string.Empty) return Results.BadRequest();
 
@@ -103,7 +101,7 @@ namespace org_api
             return Results.Ok(organisationsResult.Content as Organisation);
         }
 
-        private static async Task<IResult> DeleteOrganisationByName(string name, OrganisationService svc)
+        private static async Task<IResult> DeleteOrganisationByName(string name, OrganisationService.OrganisationService svc)
         {
             if (name is null || name == string.Empty) return Results.BadRequest();
 
@@ -117,7 +115,7 @@ namespace org_api
             return Results.NotFound();
         }
 
-        private static async Task<IResult> DeleteOrganisationById(string name, string orgId, OrganisationService svc)
+        private static async Task<IResult> DeleteOrganisationById(string name, string orgId, OrganisationService.OrganisationService svc)
         {
             if (name is null || name == string.Empty) return Results.BadRequest();
             if (orgId is null || orgId == string.Empty) return Results.BadRequest();
@@ -132,7 +130,7 @@ namespace org_api
             return Results.NotFound();
         }
 
-        private static async Task<IResult> ModifyOrganisation(Organisation org, OrganisationService svc)
+        private static async Task<IResult> ModifyOrganisation(Organisation org, OrganisationService.OrganisationService svc)
         {
             if (org is null) return Results.BadRequest();
 
@@ -146,7 +144,7 @@ namespace org_api
             return Results.Accepted();
         }
 
-        private static async Task<IResult> AddOrganisation(Organisation org, OrganisationService svc)
+        private static async Task<IResult> AddOrganisation(Organisation org, OrganisationService.OrganisationService svc)
         {
             if (org is null) return Results.BadRequest();
 
@@ -160,7 +158,7 @@ namespace org_api
             return Results.Accepted();
         }
 
-        private static async Task<IResult> GetOrganisdationByName(string name, OrganisationService svc)
+        private static async Task<IResult> GetOrganisdationByName(string name, OrganisationService.OrganisationService svc)
         {
             if (name is null || name == string.Empty) return Results.BadRequest();
 
@@ -174,7 +172,7 @@ namespace org_api
             return Results.Ok(result.Content);
         }
 
-        private static async Task<IResult> GetOrganisations(OrganisationService svc)
+        private static async Task<IResult> GetOrganisations(OrganisationService.OrganisationService svc)
         {
             var result = await svc.GetAsync();
 
@@ -193,7 +191,7 @@ namespace org_api
 
         private static async Task<IResult> PatchOrganisation(string organisationId,
                                                              JsonPatchDocument<Organisation> patch,
-                                                             OrganisationService svc)
+                                                             OrganisationService.OrganisationService svc)
         {
             var organisation = await GetOrganisdationById(organisationId, svc) as Organisation;
 

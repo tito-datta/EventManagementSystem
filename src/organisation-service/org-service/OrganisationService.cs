@@ -1,15 +1,19 @@
-﻿using data_access;
-using data_access.redis.database;
+﻿using DataAccess;
+using DataAccess.Redis.Database;
 using models;
 
-namespace org_service;
+namespace OrganisationService;
 
 public class OrganisationService
 {
     private readonly RedisDbService<Organisation> _dbSvc;
 
-    public OrganisationService(RedisDbService<Organisation> dbSvc) => _dbSvc = dbSvc;
+    public OrganisationService(RedisDbService<Organisation> dbSvc) =>
+        _dbSvc = dbSvc ?? throw new ArgumentNullException(nameof(dbSvc));
 
+    /// <summary>
+    /// Retrieves all organisations.
+    /// </summary>
     public async Task<Result> GetAsync()
     {
         try
@@ -25,202 +29,219 @@ public class OrganisationService
         }
     }
 
+    /// <summary>
+    /// Retrieves organisations by name.
+    /// </summary>
     public async Task<Result> GetByNameAsync(string name)
     {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentNullException(nameof(name));
+
         try
         {
             var all = await _dbSvc.QueryAsync(o => Task.FromResult(o.Where(oo => oo.Name == name).ToArray()));
-            if (all is Organisation[] && all.Length > 0)
-            {
-                return new() { Content = all };
-            }
-            return new() { Content = string.Format("No match found for {0}.", name) };
+            return all is not null && all.Length > 0
+                ? new Result { Content = all }
+                : new Result { Content = $"No match found for {name}." };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Retrieves an organisation by ID.
+    /// </summary>
     public async Task<Result> GetByIdAsync(string id)
     {
-        if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException(nameof(id));
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentNullException(nameof(id));
 
         try
         {
-            var organisation = (await _dbSvc.QueryAsync(o => Task.FromResult(new Organisation[] { o.Single(oo => oo.Id.ToString().Equals(id)) })))[0];
+            var organisation = await _dbSvc.QueryAsync(o => Task.FromResult(new Organisation[] { o.SingleOrDefault(oo => oo.Id.ToString() == id) }));
 
-            if (organisation is Organisation)
-            {
-                return new() { Content = organisation };
-            }
-
-            return new() { Content = default };
-        }
-        catch (InvalidOperationException)
-        {
-            return new() { Content = string.Format("More than one Organisations were found with id: {0}", id) };
+            return organisation != null
+                ? new Result { Content = organisation }
+                : new Result { Content = default };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Creates a new organisation.
+    /// </summary>
     public async Task<Result> CreateOrganisationAsync(Organisation organisation)
     {
-        if (organisation == null) throw new ArgumentNullException(nameof(organisation));
+        if (organisation == null)
+            throw new ArgumentNullException(nameof(organisation));
 
         try
         {
             await _dbSvc.CreateAsync(organisation);
-            return new() { Content = "Successfully saved." };
+            return new Result { Content = "Successfully saved." };
         }
         catch (Exception ex)
         {
-            // gotta figure out what to do here
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Deletes an organisation by name and optional ID.
+    /// </summary>
     public async Task<Result> DeleteOrganisationAsync(string name, string organisationId = null)
     {
-        if (name == null) throw new ArgumentNullException(nameof(name));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentNullException(nameof(name));
 
         try
         {
             var toDelete = await _dbSvc.QueryAsync(o => Task.FromResult(o.Where(oo => oo.Name == name).ToArray()));
-            if (toDelete is not null && toDelete.Length is not 0)
-            {
-                if (toDelete.Length > 1)
-                {
-                    throw new ArgumentNullException(string.Format("More than one matches fournd for {0}, provide {1} parameter to delete.", name, organisationId));
-                }
 
-                await _dbSvc.DeleteAsync(toDelete.Single());
-                return new() { Content = "Successfully deleted." };
-            }
-            return new() { Content = string.Format("No match found for {0}.", name) };
+            if (toDelete.Length == 0)
+                return new Result { Content = $"No match found for {name}." };
+
+            if (toDelete.Length > 1 && string.IsNullOrWhiteSpace(organisationId))
+                throw new ArgumentException($"More than one match found for {name}, provide organisationId parameter to delete.");
+
+            var orgToDelete = organisationId != null
+                ? toDelete.Single(o => o.Id.ToString() == organisationId)
+                : toDelete.Single();
+
+            await _dbSvc.DeleteAsync(orgToDelete);
+            return new Result { Content = "Successfully deleted." };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Updates an existing organisation.
+    /// </summary>
     public async Task<Result> UpdateOrganisationAsync(Organisation organisation)
     {
-        if (organisation == null) throw new ArgumentNullException(nameof(organisation));
+        if (organisation == null)
+            throw new ArgumentNullException(nameof(organisation));
 
         try
         {
             await _dbSvc.UpdateAsync(organisation);
-            return new() { Content = $"Successfully updated {organisation.Name}." };
+            return new Result { Content = $"Successfully updated {organisation.Name}." };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Retrieves all users for an organisation.
+    /// </summary>
     public async Task<Result> GetAllUsersForAnOrgAsync(string orgId)
     {
-        if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+        if (string.IsNullOrEmpty(orgId))
+            throw new ArgumentNullException(nameof(orgId));
 
         try
         {
-            var users = await _dbSvc.QueryAsync(org => Task.FromResult(org.SingleOrDefault(oo => oo.Id.ToString().Equals(orgId))?.Users ?? []));
+            var users = await _dbSvc.QueryAsync(org =>
+                Task.FromResult(org.FirstOrDefault(o => o.Id.ToString() == orgId)?.Users ?? Array.Empty<User>()));
 
-            if (users == null || users.Length == 0)
-            {
-                return new() { Content = string.Format("Organisation with id {0} has no users.", orgId) };
-            }
-
-            return new() { Content = users };
+            return users.Length == 0
+                ? new Result { Content = $"Organisation with id {orgId} has no users." }
+                : new Result { Content = users };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Retrieves all members for an organisation.
+    /// </summary>
     public async Task<Result> GetAllMembersForAnOrgAsync(string orgId)
     {
-        if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+        if (string.IsNullOrEmpty(orgId))
+            throw new ArgumentNullException(nameof(orgId));
 
         try
         {
-            var members = await _dbSvc.QueryAsync(org => Task.FromResult(org.SingleOrDefault(oo => oo.Id.ToString().Equals(orgId))?.Members ?? []));
+            var members = await _dbSvc.QueryAsync(org =>
+                Task.FromResult(org.FirstOrDefault(o => o.Id.ToString() == orgId)?.Members ?? Array.Empty<Member>()));
 
-            if (members == null || members.Length == 0)
-            {
-                return new() { Content = string.Format("Organisation with id {0} has no members.", orgId) };
-            }
-
-            return new() { Content = members };
+            return members.Length == 0
+                ? new Result { Content = $"Organisation with id {orgId} has no members." }
+                : new Result { Content = members };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
+    /// <summary>
+    /// Retrieves user details for an organisation.
+    /// </summary>
     public async Task<Result> GetUserDetailsAsync(string userName, string orgId)
     {
-        if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+        if (string.IsNullOrEmpty(orgId))
+            throw new ArgumentNullException(nameof(orgId));
 
         try
         {
-            var users = await _dbSvc.QueryAsync(org => Task.FromResult((from o in org
-                                                                        where o.Id.ToString() == orgId
-                                                                        from usr in o.Users
-                                                                        where usr.Name == userName
-                                                                        select usr).ToArray()));
+            var users = await _dbSvc.QueryAsync(org => Task.FromResult(
+                (from o in org
+                 where o.Id.ToString() == orgId
+                 from user in o.Users
+                 where user.Name == userName
+                 select user).ToArray()));
 
-            if (users == null || users.Length == 0)
-            {
-                return new() { Content = string.Format("Organisation with id {0} has no users.", orgId) };
-            }
-
-            return new() { Content = users.Length > 1 ? users : users.Single() };
+            return users.Length == 0
+                ? new Result { Content = $"No user found with name {userName} in organisation with id {orgId}." }
+                : new Result { Content = users.Length > 1 ? users : users[0] };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
+            return CreateErrorResult(ex);
         }
     }
 
-    public async Task<Result> GeMemberDetailsAsync(string memberName, string orgId)
+    /// <summary>
+    /// Retrieves member details for an organisation.
+    /// </summary>
+    public async Task<Result> GetMemberDetailsAsync(string memberName, string orgId)
     {
-        if (string.IsNullOrEmpty(orgId)) throw new ArgumentNullException(nameof(orgId));
+        if (string.IsNullOrEmpty(orgId))
+            throw new ArgumentNullException(nameof(orgId));
 
         try
         {
-            var members = await _dbSvc.QueryAsync(o => Task.FromResult(query(memberName, orgId, o)));
+            var members = await _dbSvc.QueryAsync(org => Task.FromResult(
+                (from o in org
+                 where o.Id.ToString() == orgId
+                 from member in o.Members
+                 where member.Name == memberName
+                 select member).ToArray()));
 
-            if (members == null || members.Length == 0)
-            {
-                return new() { Content = string.Format("Organisation with id {0} has no members.", orgId) };
-            }
-
-            return new() { Content = members.Length > 1 ? members : members.Single() };
+            return members.Length == 0
+                ? new Result { Content = $"No member found with name {memberName} in organisation with id {orgId}." }
+                : new Result { Content = members.Length > 1 ? members : members[0] };
         }
         catch (Exception ex)
         {
-            return new() { Error = ex.Message, Content = ex };
-        }
-
-        Member[] query(string memberName,
-                       string orgId,
-                       System.Collections.Immutable.ImmutableArray<Organisation> o)
-        {
-            var result = from org in o
-                         where org.Id.ToString() == orgId
-                         from member in org.Members
-                         where member.Name == memberName
-                         select member;
-
-            return result.ToArray();
+            return CreateErrorResult(ex);
         }
     }
+
+    private Result CreateErrorResult(Exception ex) =>
+        new Result { Error = ex.Message, Content = ex };
+
 }

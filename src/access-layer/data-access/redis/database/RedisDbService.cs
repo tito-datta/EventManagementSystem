@@ -1,76 +1,152 @@
-using System.Collections.Immutable;
-using System.Text.Json;
-using Redis.OM;
+using Microsoft.Extensions.Logging;
 using Redis.OM.Contracts;
 using Redis.OM.Searching;
-using StackExchange.Redis;
 
-namespace data_access.redis.database
+namespace DataAccess.Redis.Database;
+
+public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
 {
-    public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
+    private readonly IRedisConnectionProvider _connectionProvider;
+    private readonly IRedisCollection<T> _collection;
+    private readonly ILogger<T> _logger;
+
+    public RedisDbService(
+        IRedisConnectionProvider connectionProvider,        
+        ILogger<T> logger,
+        IRedisCollection<T> collection = null)
     {
-        private readonly IRedisConnectionProvider _connectionProvider;
-        private readonly IRedisCollection<T> _collection;        
+        _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
+        _collection = collection ?? _connectionProvider.RedisCollection<T>();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
-        public RedisDbService(IRedisConnectionProvider connPro)
+    public async Task<T> GetAsync(string id)
+    {
+        if (string.IsNullOrEmpty(id))
         {
-            _connectionProvider = connPro;
-
-            _collection = new RedisCollection<T>(_connectionProvider.Connection, true, chunkSize: 300);
+            throw new ArgumentException("Id cannot be null or empty", nameof(id));
         }
 
-        public async Task<T> GetAsync(string id, string partKey)
+        _logger.LogDebug("Fetching item with key: {Id}", id);
+        try
         {
-            var result = await _collection.SingleAsync(a => a.Id.ToString() == id);
-            if(result != null)
+            var result = await _collection.FirstOrDefaultAsync(a => a.Id.ToString() == id);
+            if (result is null)
             {
-                return result;
+                _logger.LogDebug("No item found with key: {Id}", id);
             }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching item with key: {Id}", id);
+            throw;
+        }
+    }
 
-            return default;
+    public async Task CreateAsync(T item)
+    {
+        if (item is null)
+        {
+            throw new ArgumentNullException(nameof(item));
         }
 
-        public async Task CreateAsync(T item)
+        _logger.LogDebug("Creating item with key: {Id}", item.Id);
+        try
         {
-            if(item == null) throw new ArgumentNullException(nameof(item));
-
-            var isPresent = _collection.Where(a => a.Id == item.Id) != null;
-
-            if (!isPresent)
+            var exists = await _collection.AnyAsync(a => a.Id == item.Id);
+            if (exists)
             {
-                await _collection.InsertAsync(item);
-            }
-            else
-            {
-                await _collection.UpdateAsync(item);
+                throw new InvalidOperationException($"Item with id {item.Id} already exists");
             }
 
+            await _collection.InsertAsync(item);
             await _collection.SaveAsync();
         }
-
-        public async Task DeleteAsync(T item)
+        catch (Exception ex)
         {
-            if(item is null) throw new ArgumentNullException(nameof(item));
+            _logger.LogError(ex, "Error creating item with key: {Id}", item.Id);
+            throw;
+        }
+    }
 
-            await _collection.DeleteAsync(item);
+    public async Task DeleteAsync(T item)
+    {
+        if (item is null)
+        {
+            throw new ArgumentNullException(nameof(item));
         }
 
-        public async Task<T[]> QueryAsync(Func<ImmutableArray<T>, Task<T[]>> query) => await query([.. _collection]);
-
-        public async Task<S[]> QueryAsync<S>(Func<ImmutableArray<T>, Task<S[]>> query) => await query([.. _collection]);
-
-        public async Task<bool> UpdateAsync(T item)
+        _logger.LogDebug("Deleting item with key: {Id}", item.Id);
+        try
         {
-            try
+            var existingItem = await GetAsync(item.Id.ToString());
+            if (existingItem is null)
             {
-                await _collection.UpdateAsync(item);
-                await _collection.SaveAsync();
-                return true;
+                throw new InvalidOperationException($"Item with id {item.Id} does not exist");
             }
-            catch (Exception ex)
+
+            await _collection.DeleteAsync(item);
+            await _collection.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting item with key: {Id}", item.Id);
+            throw;
+        }
+    }
+
+    public async Task<T[]> QueryAsync(Func<IQueryable<T>, Task<T[]>> query)
+    {
+        try
+        {
+            return await query(_collection.AsQueryable());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing query");
+            throw;
+        }
+    }
+
+    public async Task<S[]> QueryAsync<S>(Func<IQueryable<T>, Task<S[]>> query)
+    {
+        try
+        {
+            return await query(_collection.AsQueryable());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing query");
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateAsync(T item)
+    {
+        if (item is null)
+        {
+            throw new ArgumentNullException(nameof(item));
+        }
+
+        _logger.LogDebug("Updating item with key: {Id}", item.Id);
+        try
+        {
+            var existingItem = await GetAsync(item.Id.ToString());
+            if (existingItem is null)
             {
+                _logger.LogWarning("Failed to update item with key: {Id}. Item not found.", item.Id);
                 return false;
             }
+
+            await _collection.UpdateAsync(item);
+            await _collection.SaveAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating item with key: {Id}", item.Id);
+            return false;
         }
     }
 }
