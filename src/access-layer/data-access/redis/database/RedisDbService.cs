@@ -10,10 +10,9 @@ public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
     private readonly IRedisCollection<T> _collection;
     private readonly ILogger<T> _logger;
 
-    public RedisDbService(
-        IRedisConnectionProvider connectionProvider,        
-        ILogger<T> logger,
-        IRedisCollection<T> collection = null)
+    public RedisDbService(IRedisConnectionProvider connectionProvider,
+                          ILogger<T> logger,
+                          IRedisCollection<T>? collection)
     {
         _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
         _collection = collection ?? _connectionProvider.RedisCollection<T>();
@@ -35,7 +34,7 @@ public class RedisDbService<T> : IDataAccess<T> where T : IRedisDbEntity
             {
                 _logger.LogDebug("No item found with key: {Id}", id);
             }
-            return result;
+            return result!;
         }
         catch (Exception ex)
         {
