@@ -17,16 +17,17 @@ internal class Program
         var logFactory = new NullLoggerFactory();
 
         OrganisationFakerTwoOrganisationsHaveSimilarMemeberNames orgFaker = new();
-        var organisations = orgFaker.GenerateBetween(1, 6);
+        var organisations = orgFaker.GenerateBetween(1000, 2150);
 
         var connectionProvider = new RedisConnectionProvider(connString);
-        RedisDbService<Organisation> dbSvc = new(connectionProvider, logFactory.CreateLogger<Organisation>());
+        Lazy<RedisDbService<Organisation>> dbSvc = new(() => new(connectionProvider, logFactory.CreateLogger<Organisation>(), null)); // passing null since we do not yet fetch the collection here
+        // RedisDbService<Organisation> dbSvc = new(connectionProvider, logFactory.CreateLogger<Organisation>(), null); 
         connectionProvider.Connection.CreateIndex(typeof(Organisation));
 
         organisations.ForEach(async o =>
         {
             Console.WriteLine($"Creating {o.Name} fake organisation...");
-            await dbSvc.CreateAsync(o);
+            await dbSvc.Value.CreateAsync(o);
         });
 
         Console.WriteLine($"Generated {organisations.Count()} fake items...");

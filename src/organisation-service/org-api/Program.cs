@@ -37,7 +37,8 @@ if (builder.Environment.IsDevelopment())
 
 // Register Redis
 builder.Services.AddSingleton(s => new RedisDbService<Organisation>(new RedisConnectionProvider(builder.Configuration.GetSection("Redis").Value!),
-                                                                    s.GetService<ILogger<Organisation>>()!));
+                                                                    s.GetService<ILogger<Organisation>>()!,
+                                                                    null));
 
 // Register services
 builder.Services.AddScoped(s => new OrganisationService.OrganisationService(s.GetRequiredService<RedisDbService<Organisation>>()));
@@ -64,17 +65,19 @@ if (app.Environment.IsDevelopment())
 
 // Middlewares
 // Example middleware
-app.Use(async (ctx, next) =>
+app.Use(async (context, next) =>
 {
-    Stopwatch watch = new();
-    watch.Start();
-    ctx.Response.OnCompleted(() =>
+    var watch = Stopwatch.StartNew();
+
+    context.Response.OnStarting(() =>
     {
         watch.Stop();
+        var responseTimeMilliseconds = watch.ElapsedMilliseconds;
+        context.Response.Headers["X-Response-Time"] = $"{responseTimeMilliseconds}ms";
         return Task.CompletedTask;
     });
-    _ = ctx.Response.Headers.TryAdd("X-Response-Time", string.Format("{0} ms", watch.ElapsedMilliseconds.ToString()));
-    await next.Invoke();
+
+    await next(context);
 });
 
 app.UseHttpsRedirection();
